@@ -1,0 +1,42 @@
+name: lottery_app
+description: "Lottery mobile app Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  dio: ^5.8.0+1
+  flutter:
+    sdk: flutter
+  get: ^4.7.2
+#  esc_pos_printer: ^4.1.0
+#  esc_pos_utils: ^1.1.0
+#  flutter_blue_plus: ^1.35.3
+#  flutter_pos_printer_platform: ^1.4.1
+#  flutter_thermal_printer: ^0.0.4
+#  sunmi_printer_plus: ^4.1.0
+#  printing: ^5.9.3
+  get_storage: ^2.1.1
+  lottie: ^3.3.1
+  mobile_scanner: ^6.0.7
+  pdf: ^3.11.3
+  printing: 5.13.4
+  qr_flutter: ^4.1.0
+#  flutter_esc_pos_network: ^1.0.2
+
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
