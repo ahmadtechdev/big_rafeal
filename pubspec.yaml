@@ -17,13 +17,14 @@ dependencies:
 #  flutter_pos_printer_platform: ^1.4.1
 #  flutter_thermal_printer: ^0.0.4
 #  sunmi_printer_plus: ^4.1.0
-#  printing: ^5.9.3
+  printing: ^5.9.3
   get_storage: ^2.1.1
-  lottie: ^3.3.1
+#  lottie: ^3.3.1
   mobile_scanner: ^6.0.7
   pdf: ^3.11.3
-  printing: 5.13.4
+#  printing: 5.13.4
   qr_flutter: ^4.1.0
+  intl: ^0.20.2
 #  flutter_esc_pos_network: ^1.0.2
 
 

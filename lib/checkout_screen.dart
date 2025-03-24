@@ -6,6 +6,7 @@ import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:ui' as ui;
 import 'package:get/get.dart';
+import 'api_service/api_service.dart';
 import 'utils/app_colors.dart';
 import 'ticket_details_screen.dart';
 import 'controllers/user_controller.dart';
@@ -442,11 +443,62 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Get lottery name and winning price from lottery model or use defaults
       final String lotteryName = _currentLottery?.lotteryName ?? 'Lot Name';
       final String winningPrice = _currentLottery?.winningPrice ?? '000';
+      final String winningNumbers = _currentLottery?.winningNumber ?? '';
+      final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
       final String lotteryCode = _currentLottery?.lotteryCode ?? '';
       final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
 
       // Get merchant name from user model or use default
       final String merchantName = _currentUser?.name ?? '';
+
+      final User? user = _currentUser;
+      if (user == null) {
+        _showSnackBar('User information not available');
+        return;
+      }
+
+      // Create API service instance
+      final ApiService apiService = ApiService();
+
+      // Save each lottery row
+      for (int i = 0; i < widget.selectedNumbers.length; i++) {
+        final List<int> numbers = widget.selectedNumbers[i];
+        final String ticketId = "BIGR$lotteryCode";
+        final String product = '$lotteryNumbers x $lotteryName';
+
+        // Format selected numbers for API
+        final String selectedNumbersStr = numbers.join(', ');
+
+        String winOrLoss ="loss";
+        if(selectedNumbersStr==winningNumbers){
+          winOrLoss="win";
+        }
+        _showSnackBar('Saving lottery ticket ${i+1}/${widget.selectedNumbers.length}');
+
+        // Save to API
+        try {
+          await apiService.saveLotterySale(
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            userNumber: user.phone,
+            lotteryName: lotteryName,
+            purchasePrice: purchasePrice,
+            winningPrice: winningPrice,
+            lotteryCode: lotteryCode,
+            numberOfLottery: lotteryNumbers,
+            selectedNumbers: selectedNumbersStr,
+            winOrLoss: winOrLoss
+          );
+        } catch (e) {
+          _showSnackBar('Error saving ticket ${i+1}: $e');
+          print('Error saving lottery sale: $e');
+          // Continue with other tickets even if one fails
+        }
+      }
+
+      _showSnackBar('Printing receipts...');
+
 
       // Load logos
       final Uint8List? companyLogoData = await _loadCompanyLogo();

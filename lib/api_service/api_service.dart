@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import '../models/lottery_model.dart';
+import '../models/user_lottery_modal.dart';
 
 class ApiService {
   final Dio _dio = Dio();
@@ -132,4 +133,92 @@ class ApiService {
       throw 'Login failed: $e';
     }
   }
+
+
+  // Add to api_service.dart
+  Future<Map<String, dynamic>> saveLotterySale({
+    required int userId,
+    required String userName,
+    required String userEmail,
+    required String userNumber,
+    required String lotteryName,
+    required String purchasePrice,
+    required String winningPrice,
+    required String lotteryCode,
+    required String numberOfLottery,
+    required String selectedNumbers,
+    String winOrLoss = "loss", // Default to "loss"
+  }) async {
+    try {
+      final headers = {'Content-Type': 'application/json'};
+
+      final data = json.encode({
+        "user_id": userId.toString(),
+        "User_name": userName,
+        "User_email": userEmail,
+        "User_number": userNumber,
+        "lottery_name": lotteryName,
+        "purchase_price": purchasePrice,
+        "winning_price": winningPrice,
+        "image": "image", // Default value
+        "lottery_code": lotteryCode,
+        "number_of_lottery": numberOfLottery,
+        "lottery_issue_date": DateTime.now().toString(),
+        "selected_numbers": selectedNumbers,
+        "w_or_l": winOrLoss
+      });
+
+      final response = await _dio.request(
+        '$_baseUrl/add_lottery',
+        options: Options(method: 'POST', headers: headers),
+        data: data,
+      );
+
+      return response.data;
+    } on DioException catch (e) {
+      // Error handling remains the same
+      if (e.response != null) {
+        if (e.response!.data is Map) {
+          final errorMessage = e.response!.data['message'] ?? 'Sale saving failed';
+          throw errorMessage;
+        } else {
+          throw 'Sale saving failed with status: ${e.response!.statusCode}';
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw 'Connection timed out. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        throw 'Something went wrong. Please try again later.';
+      }
+    } catch (e) {
+      throw 'Sale saving failed: $e';
+    }
+  }
+
+  Future<List<UserLottery>> fetchUserLotteries(int userId) async {
+    try {
+      final response = await _dio.get('$_baseUrl/shop_lottery/$userId');
+
+      if (response.statusCode == 200) {
+        List<dynamic> lotteryData = response.data['lotteries'];
+        return lotteryData.map((json) => UserLottery.fromJson(json)).toList();
+      } else {
+        throw 'Failed to load user lotteries with status: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw 'Failed to load user lotteries with status: ${e.response!.statusCode}';
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw 'Connection timed out. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        throw 'Something went wrong. Please try again later.';
+      }
+    } catch (e) {
+      throw 'Failed to load user lotteries: $e';
+    }
+  }
+
 }
