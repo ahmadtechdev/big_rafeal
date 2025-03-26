@@ -13,8 +13,9 @@ import 'dart:math' as math;
 
 class LotteryCardsScreen extends StatelessWidget {
   final LotteryController lotteryController = Get.put(LotteryController());
-  late final qrScannerService = QRScannerService(lotteryController: lotteryController);
-
+  late final qrScannerService = QRScannerService(
+    lotteryController: lotteryController,
+  );
 
   LotteryCardsScreen({super.key});
 
@@ -26,9 +27,7 @@ class LotteryCardsScreen extends StatelessWidget {
       body: Obx(() {
         if (lotteryController.isLoading.value) {
           return const Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primaryColor,
-            ),
+            child: CircularProgressIndicator(color: AppColors.primaryColor),
           );
         } else if (lotteryController.lotteries.isEmpty) {
           return Center(
@@ -153,10 +152,7 @@ class LotteryCardsScreen extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppColors.primaryColor,
-                  AppColors.secondaryColor,
-                ],
+                colors: [AppColors.primaryColor, AppColors.secondaryColor],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -194,7 +190,10 @@ class LotteryCardsScreen extends StatelessWidget {
                 ),
                 // Price tag
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
@@ -223,7 +222,7 @@ class LotteryCardsScreen extends StatelessWidget {
                     runSpacing: 8,
                     children: List.generate(
                       circleCount > 6 ? 6 : circleCount,
-                          (index) => Container(
+                      (index) => Container(
                         width: 32,
                         height: 32,
                         decoration: BoxDecoration(
@@ -251,7 +250,10 @@ class LotteryCardsScreen extends StatelessWidget {
                 if (circleCount > 6)
                   Container(
                     margin: const EdgeInsets.only(left: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.inputFieldBackground,
                       borderRadius: BorderRadius.circular(12),
@@ -335,49 +337,66 @@ class LotteryCardsScreen extends StatelessWidget {
           ),
 
           // Play button
+          // Then modify the GestureDetector for the Play button:
           GestureDetector(
             onTap: () {
-              Get.to(
-                    () => LotteryNumberSelectionScreen(
-                  lotteryId: lotteryId,
-                  lotteryName: title,
-                  numbersPerRow: circleCount,
-                  price: price,
-                ),
-                transition: Transition.rightToLeft,
-              );
+              if (_isDatePassed(drawDate)) {
+                Get.snackbar(
+                  'Expired Lottery',
+                  'This lottery draw has ended and cannot be played',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+              } else {
+                Get.to(
+                      () => LotteryNumberSelectionScreen(
+                    lotteryId: lotteryId,
+                    lotteryName: title,
+                    numbersPerRow: circleCount,
+                    price: price,
+                    endDate: drawDate, // Add this parameter
+                  ),
+                  transition: Transition.rightToLeft,
+                );
+              }
             },
             child: Container(
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
+                gradient: _isDatePassed(drawDate)
+                    ? LinearGradient(colors: [Colors.grey, Colors.grey.shade600])
+                    : AppColors.primaryGradient,
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primaryColor.withOpacity(0.3),
+                    color: _isDatePassed(drawDate)
+                        ? Colors.grey.withOpacity(0.3)
+                        : AppColors.primaryColor.withOpacity(0.3),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Play Now',
-                    style: TextStyle(
+                    _isDatePassed(drawDate) ? 'Expired' : 'Play Now',
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  SizedBox(width: 8),
-                  Icon(
-                    Icons.play_circle_outline_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  if (!_isDatePassed(drawDate)) const SizedBox(width: 8),
+                  if (!_isDatePassed(drawDate))
+                    const Icon(
+                      Icons.play_circle_outline_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                 ],
               ),
             ),
@@ -387,6 +406,13 @@ class LotteryCardsScreen extends StatelessWidget {
     );
   }
 
-
-
+  // Add this helper method to check if date has passed
+  bool _isDatePassed(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return date.isBefore(DateTime.now());
+    } catch (e) {
+      return false; // If date parsing fails, assume it's not passed
+    }
+  }
 }

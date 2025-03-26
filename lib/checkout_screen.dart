@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -84,13 +86,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   // Generate QR code with lottery code included
-  Future<Uint8List> _generateQrCode(String ticketId, String? lotteryCode) async {
+  // Update the _generateQrCode method in CheckoutScreen
+  Future<Uint8List> _generateQrCode(String ticketId, int rowIndex) async {
     try {
-      // Include lottery code in QR data if available
-      final String qrData = "${widget.lotteryId}_$ticketId";
+      // Create a JSON object containing all necessary data
+      final qrData = {
+        'lotteryId': widget.lotteryId,
+        'ticketId': ticketId,
+        'rowIndex': rowIndex,
+        'selectedNumbers': widget.selectedNumbers[rowIndex],
+        'purchaseDate': DateTime.now().toIso8601String(),
+      };
+
+      // Convert to JSON string
+      final String qrDataString = jsonEncode(qrData);
 
       final qrValidationResult = QrValidator.validate(
-        data: qrData,
+        data: qrDataString,
         version: QrVersions.auto,
         errorCorrectionLevel: QrErrorCorrectLevel.M,
       );
@@ -119,7 +131,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return byteData!.buffer.asUint8List();
     } catch (e) {
       print('Error generating QR code: $e');
-      // Return a placeholder if QR generation fails
       return Uint8List.fromList([]);
     }
   }
@@ -478,17 +489,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // Save to API
         try {
           await apiService.saveLotterySale(
-            userId: user.id,
-            userName: user.name,
-            userEmail: user.email,
-            userNumber: user.phone,
-            lotteryName: lotteryName,
-            purchasePrice: purchasePrice,
-            winningPrice: winningPrice,
-            lotteryCode: lotteryCode,
-            numberOfLottery: lotteryNumbers,
-            selectedNumbers: selectedNumbersStr,
-            winOrLoss: winOrLoss
+              userId: user.id,
+              userName: user.name,
+              userEmail: user.email,
+              userNumber: user.phone,
+              lotteryName: lotteryName,
+              purchasePrice: purchasePrice,
+              winningPrice: winningPrice,
+              lotteryCode: lotteryCode,
+              numberOfLottery: lotteryNumbers,
+              selectedNumbers: selectedNumbersStr,
+              winOrLoss: winOrLoss
           );
         } catch (e) {
           _showSnackBar('Error saving ticket ${i+1}: $e');
@@ -499,25 +510,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       _showSnackBar('Printing receipts...');
 
-
       // Load logos
       final Uint8List? companyLogoData = await _loadCompanyLogo();
       final Uint8List? pencilLogoData = await _loadPencilLogo();
 
-      // Print a separate receipt for each row of numbers
+      // Create a single PDF document for all receipts
+      final pdf = pw.Document();
+
+      // Add all receipts to the same document
       for (int i = 0; i < widget.selectedNumbers.length; i++) {
         final List<int> numbers = widget.selectedNumbers[i];
         final String ticketId = "BIGR$lotteryCode";
         final String product = '$lotteryNumbers x $lotteryName';
 
         // Generate QR code with lottery code
-        final Uint8List qrImageData = await _generateQrCode(ticketId, lotteryCode);
+        final Uint8List qrImageData = await _generateQrCode(ticketId, i);
 
-        // Create PDF document
-        final pdf = pw.Document();
-
-        // Add receipt page - using exact size for POS printer (standard 80mm receipt)
-        // Using 72mm width (accounting for margins) which is standard for most POS printers
+        // Add receipt page to the document
         pdf.addPage(
           pw.Page(
               pageFormat: PdfPageFormat.roll80,
@@ -696,24 +705,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     pw.Text('---- Thank You ----',
                         style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
 
-                    pw.SizedBox(height: 30),
+                    // Add cut line between receipts if not the last receipt
+                    i < widget.selectedNumbers.length - 1
+                        ? pw.Column(
+                      children: [
+                        pw.SizedBox(height: 10),
+                        pw.Text('--------------------------------',
+                            style: pw.TextStyle(fontSize: 8)),
+                        pw.SizedBox(height: 10),
+                      ],
+                    )
+                        : pw.SizedBox(height: 30),
                   ],
                 );
               }
           ),
         );
-
-        // Print directly without showing preview
-        await Printing.layoutPdf(
-            onLayout: (PdfPageFormat format) async => pdf.save(),
-            name: 'BIG_RAFEAL_Ticket_$ticketId.pdf',
-            format: PdfPageFormat.roll80
-        );
       }
+
+      // Print entire document once
+      await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdf.save(),
+          name: 'BIG_RAFEAL_Tickets.pdf',
+          format: PdfPageFormat.roll80
+      );
 
       _showSnackBar('All receipts printed successfully');
 
-      // Navigate to ticket details screen after printing (using first row of numbers)
+      // Navigate to ticket details screen after printing
       if (mounted && widget.selectedNumbers.isNotEmpty) {
         final String lotteryCode = _currentLottery?.lotteryCode ?? '';
         Navigator.push(

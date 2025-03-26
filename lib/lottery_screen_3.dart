@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:lottery_app/widget/qr_scanner_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'controllers/user_controller.dart';
+import 'login_screen_2.dart';
 import 'lottery_sale.dart';
 import 'utils/app_colors.dart';
 import 'lottery_cards_screen_4.dart';
@@ -15,7 +18,9 @@ class LotteryScreen extends StatelessWidget {
 
   final LotteryController lotteryController = Get.put(LotteryController());
   final MobileScannerController scannerController = MobileScannerController();
-  late final qrScannerService = QRScannerService(lotteryController: lotteryController);
+  late final qrScannerService = QRScannerService(
+    lotteryController: lotteryController,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +57,123 @@ class LotteryScreen extends StatelessWidget {
                 );
               }
 
+              if (lotteryController.lotteries.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/no_lottery.png', // Add this asset to your project
+                        width: 150,
+                        height: 150,
+                      ),
+                      const SizedBox(height: 20),
+                      // In the empty state widget, update the text to:
+                      const Text(
+                        'No Active Tickets',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 40),
+                        child: Text(
+                          'There are currently no active tickets. Please check back later for new draws.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => lotteryController.refreshLotteries(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: const Text(
+                          'Refresh',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              // Add this check before the SingleChildScrollView
+              if (lotteryController.lotteries
+                  .every((lottery) => _isLotteryExpired(lottery.endDate))) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/no_lottery.png',
+                        width: 150,
+                        height: 150,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'All Lotteries Expired',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 40),
+                        child: Text(
+                          'All current lottery draws have ended. New tickets will be available soon.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => lotteryController.refreshLotteries(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: const Text(
+                          'Refresh',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
               return SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Column(
@@ -63,13 +185,12 @@ class LotteryScreen extends StatelessWidget {
                     _buildActionButtons(context),
 
                     // Lottery sections based on numberLottery groups
-                    for (var lottery in lotteryController.lotteries)
+                    // Replace the lottery sections loop with this:
+                    for (var lottery in lotteryController.lotteries.where((lottery) => !_isLotteryExpired(lottery.endDate)))
                       _buildLotterySection(
                         context,
-                        lottery.lotteryName ??
-                            'Number ${lottery.numberLottery}',
-                        lottery.winningPrice
-                            .toString(), // Replace with actual price if available in your model
+                        lottery.lotteryName ?? 'Number ${lottery.numberLottery}',
+                        lottery.winningPrice.toString(),
                         lottery.numberLottery,
                         generateSequentialNumbers(lottery.numberLottery),
                       ),
@@ -180,25 +301,41 @@ class LotteryScreen extends StatelessWidget {
                   Icons.more_vert,
                   color: AppColors.primaryColor,
                 ),
-                onSelected: (value) {
+                onSelected: (value) async {
+                  // Update the logout section in PopupMenuButton:
                   if (value == 'logout') {
-                    // Handle logout logic here
-                    Get.snackbar(
-                      'Logout',
-                      'Logging out...',
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: AppColors.primaryColor.withOpacity(0.8),
-                      colorText: Colors.white,
+                    Get.defaultDialog(
+                      title: 'Logout',
+                      middleText: 'Are you sure you want to logout?',
+                      textConfirm: 'Yes',
+                      textCancel: 'No',
+                      confirmTextColor: Colors.white,
+                      onConfirm: () async {
+                        Get.back();
+                        final userController = Get.find<UserController>();
+                        userController.clearUser();
+
+                        Get.snackbar(
+                          'Logged Out',
+                          'You have been successfully logged out',
+                          snackPosition: SnackPosition.BOTTOM,
+                          backgroundColor: AppColors.primaryColor.withOpacity(0.8),
+                          colorText: Colors.white,
+                          duration: const Duration(seconds: 2),
+                        );
+
+                        // Navigate to login screen
+                        Get.offAll(() => LoginScreen());
+                      },
                     );
-                    // Implement actual logout functionality here
-                  }else if(value == 'lottery'){
-                    Get.to(()=> LotteryHistoryScreen());
+                  } else if (value == 'lottery') {
+                    Get.to(() => LotteryHistoryScreen());
                   }
                 },
                 itemBuilder: (BuildContext context) {
-                  return {'lottery','Logout'}.map((String choice) {
+                  return {'Lottery History', 'Logout'}.map((String choice) {
                     return PopupMenuItem<String>(
-                      value: choice.toLowerCase(),
+                      value: choice.toLowerCase().replaceAll(' ', ''),
                       child: Text(choice),
                     );
                   }).toList();
@@ -213,7 +350,10 @@ class LotteryScreen extends StatelessWidget {
 
   Widget _buildBanner(BuildContext context) {
     // Get the total number of lotteries
-    int totalLotteries = lotteryController.lotteries.length;
+    // Replace the totalLotteries line with:
+    int totalLotteries = lotteryController.lotteries
+        .where((lottery) => !_isLotteryExpired(lottery.endDate))
+        .length;
 
     return Container(
       width: double.infinity,
@@ -346,6 +486,7 @@ class LotteryScreen extends StatelessWidget {
           ),
 
           // Timer countdown
+          // Replace the timer countdown section in _buildBanner with:
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -356,15 +497,8 @@ class LotteryScreen extends StatelessWidget {
                 bottomRight: Radius.circular(16),
               ),
             ),
-            child: const Center(
-              child: Text(
-                'Next Draw: 4d 12h 30m 15s',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+            child: Center(
+              child: _buildNextDrawTimer(),
             ),
           ),
         ],
@@ -618,11 +752,108 @@ class LotteryScreen extends StatelessWidget {
     );
   }
 
+  bool _isLotteryExpired(String endDate) {
+    try {
+      final date = DateTime.parse(endDate);
+      return date.isBefore(DateTime.now());
+    } catch (e) {
+      return false; // If date parsing fails, assume it's not expired
+    }
+  }
+
+  Widget _buildNextDrawTimer() {
+    return NextDrawTimer(lotteryController: lotteryController);
+  }
   // Add this helper method to generate sequential numbers
   List<String> generateSequentialNumbers(int count) {
     return List.generate(count, (index) => (index + 1).toString());
   }
-
-
 }
 
+
+class NextDrawTimer extends StatefulWidget {
+  final LotteryController lotteryController;
+
+  const NextDrawTimer({super.key, required this.lotteryController});
+
+  @override
+  State<NextDrawTimer> createState() => _NextDrawTimerState();
+}
+
+class _NextDrawTimerState extends State<NextDrawTimer> {
+  late Timer _timer;
+  Duration _timeLeft = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTimeLeft();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _updateTimeLeft();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  void _updateTimeLeft() {
+    final upcomingLotteries = widget.lotteryController.lotteries
+        .where((lottery) => !_isLotteryExpired(lottery.endDate))
+        .toList();
+
+    if (upcomingLotteries.isEmpty) {
+      _timeLeft = Duration.zero;
+      return;
+    }
+
+    upcomingLotteries.sort((a, b) => a.endDate.compareTo(b.endDate));
+    final nextLottery = upcomingLotteries.first;
+    final endDate = DateTime.parse(nextLottery.endDate);
+    final now = DateTime.now();
+    _timeLeft = endDate.difference(now);
+  }
+
+  bool _isLotteryExpired(String endDate) {
+    try {
+      final date = DateTime.parse(endDate);
+      return date.isBefore(DateTime.now());
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_timeLeft.isNegative) {
+      return const Text(
+        'Draw in progress',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+      );
+    }
+
+    final days = _timeLeft.inDays;
+    final hours = _timeLeft.inHours % 24;
+    final minutes = _timeLeft.inMinutes % 60;
+    final seconds = _timeLeft.inSeconds % 60;
+
+    return Text(
+      'Next Draw: ${days}d ${hours}h ${minutes}m ${seconds}s',
+      style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+    );
+  }
+}

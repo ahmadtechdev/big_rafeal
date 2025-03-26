@@ -16,6 +16,7 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
   final int numbersPerRow;
   final double price;
   final int lotteryId;
+  final String endDate;
 
   LotteryNumberSelectionScreen({
     super.key,
@@ -24,6 +25,7 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
     required this.numbersPerRow,
     required this.price,
     required this.lotteryId,
+    required this.endDate,
   });
 
   @override
@@ -39,6 +41,8 @@ class _LotteryNumberSelectionScreenState
   int minutes = 7;
   int seconds = 27;
   late Timer _timer;
+  late DateTime endDateTime;
+  Duration timeLeft = Duration.zero;
 
   List<List<int>> selectedNumbersRows = [];
   int activeRowIndex = 0;
@@ -47,12 +51,23 @@ class _LotteryNumberSelectionScreenState
   late Animation<double> _animation;
 
   @override
+  @override
   void initState() {
     super.initState();
     for (int i = 0; i < widget.rowCount; i++) {
       selectedNumbersRows.add([]);
     }
-    _startTimer();
+
+    // Parse the end date
+    endDateTime = DateTime.parse(widget.endDate);
+
+    // Calculate initial time left
+    _updateTimeLeft();
+
+    // Start timer
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _updateTimeLeft();
+    });
 
     _animationController = AnimationController(
       vsync: this,
@@ -62,6 +77,20 @@ class _LotteryNumberSelectionScreenState
       parent: _animationController,
       curve: Curves.easeInOut,
     );
+  }
+
+  void _updateTimeLeft() {
+    final now = DateTime.now();
+    if (now.isAfter(endDateTime)) {
+      timeLeft = Duration.zero;
+      _timer.cancel();
+    } else {
+      timeLeft = endDateTime.difference(now);
+    }
+
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -194,15 +223,27 @@ class _LotteryNumberSelectionScreenState
   }
 
   void _navigateToCheckout() {
+    if (DateTime.now().isAfter(endDateTime)) {
+      Get.snackbar(
+        'Lottery Expired',
+        'This lottery draw has ended and cannot be played',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    if (!_areAllRowsComplete()) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder:
-            (context) => CheckoutScreen(
-              selectedNumbers: selectedNumbersRows,
-              price: widget.price * widget.rowCount,
-              lotteryId: widget.lotteryId,
-            ),
+        builder: (context) => CheckoutScreen(
+          selectedNumbers: selectedNumbersRows,
+          price: widget.price * widget.rowCount,
+          lotteryId: widget.lotteryId,
+        ),
       ),
     );
   }
@@ -299,24 +340,26 @@ class _LotteryNumberSelectionScreenState
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // Update the timer display in _buildAppBar()
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildTimerBlock(days.toString().padLeft(2, '0'), 'Days'),
+                  _buildTimerBlock(timeLeft.inDays.toString().padLeft(2, '0'), 'Days'),
                   const SizedBox(width: 4),
                   _buildTimerSeparator(':'),
                   const SizedBox(width: 4),
-                  _buildTimerBlock(hours.toString().padLeft(2, '0'), 'Hours'),
+                  _buildTimerBlock((timeLeft.inHours % 24).toString().padLeft(2, '0'), 'Hrs'),
                   const SizedBox(width: 4),
                   _buildTimerSeparator(':'),
                   const SizedBox(width: 4),
-                  _buildTimerBlock(minutes.toString().padLeft(2, '0'), 'Min'),
+                  _buildTimerBlock((timeLeft.inMinutes % 60).toString().padLeft(2, '0'), 'Min'),
                   const SizedBox(width: 4),
                   _buildTimerSeparator(':'),
                   const SizedBox(width: 4),
-                  _buildTimerBlock(seconds.toString().padLeft(2, '0'), 'Sec'),
+                  _buildTimerBlock((timeLeft.inSeconds % 60).toString().padLeft(2, '0'), 'Sec'),
                 ],
               ),
+
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -344,19 +387,32 @@ class _LotteryNumberSelectionScreenState
   }
 
   Widget _buildTimerBlock(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: timeLeft.inSeconds <= 3600 ? Colors.red : Colors.black87,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 10)),
-      ],
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 10,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -774,20 +830,27 @@ class _LotteryNumberSelectionScreenState
           const SizedBox(width: 16),
           Expanded(
             child: GestureDetector(
-              onTap: _areAllRowsComplete() ? _navigateToCheckout : null,
+              onTap: DateTime.now().isAfter(endDateTime)
+                  ? null
+                  : _areAllRowsComplete()
+                  ? _navigateToCheckout
+                  : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 height: 50,
                 decoration: BoxDecoration(
-                  color:
-                      _areAllRowsComplete()
-                          ? AppColors.primaryColor
-                          : Colors.grey.shade400,
+                  color: DateTime.now().isAfter(endDateTime)
+                      ? Colors.grey
+                      : _areAllRowsComplete()
+                      ? AppColors.primaryColor
+                      : Colors.grey.shade400,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Center(
                   child: Text(
-                    'NEXT (AED ${(widget.price * widget.rowCount).toInt()})',
+                    DateTime.now().isAfter(endDateTime)
+                        ? 'LOTTERY EXPIRED'
+                        : 'NEXT (AED ${(widget.price * widget.rowCount).toInt()})',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

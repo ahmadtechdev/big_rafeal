@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'lottery_screen_3.dart';
 import 'utils/app_colors.dart';
 
 class TicketDetailsScreen extends StatefulWidget {
@@ -403,7 +405,7 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
       padding: const EdgeInsets.all(16),
       child: ElevatedButton(
         onPressed: () {
-          Navigator.pop(context);
+          Get.offAll(()=>LotteryScreen());
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryColor,

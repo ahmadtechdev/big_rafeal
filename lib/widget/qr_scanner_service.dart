@@ -1,4 +1,5 @@
 // qr_scanner_service.dart
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:get/get.dart';
 
 import '../controllers/lottery_controller.dart';
+import '../models/lottery_model.dart';
 import '../utils/app_colors.dart';
 
 
@@ -121,16 +123,16 @@ class QRScannerService {
     });
   }
 
-  void processQRCode(BuildContext context, String qrData) {
+  void processQRCode(BuildContext context, String qrData) async {
     try {
-      // Parse QR data in format "lotteryId_BIGR{lotteryCode}"
-      final parts = qrData.split('_');
-      if (parts.length != 2) {
-        throw Exception('Invalid QR code format');
-      }
+      // Parse the JSON data from QR code
+      final Map<String, dynamic> qrDataMap = jsonDecode(qrData);
 
-      final lotteryId = int.parse(parts[0]);
-      final ticketId = parts[1];
+      final int lotteryId = qrDataMap['lotteryId'];
+      final String ticketId = qrDataMap['ticketId'];
+      final int rowIndex = qrDataMap['rowIndex'];
+      final List<int> selectedNumbers = List<int>.from(qrDataMap['selectedNumbers']);
+      final DateTime purchaseDate = DateTime.parse(qrDataMap['purchaseDate']);
 
       // Find the lottery by ID
       final lottery = lotteryController.lotteries.firstWhere(
@@ -138,12 +140,74 @@ class QRScannerService {
         orElse: () => throw Exception('Lottery not found'),
       );
 
-      // In a real app, you would check with the backend if the ticket is a winner
-      // For this example, we'll generate a random result
-      final bool isWinner = DateTime.now().millisecondsSinceEpoch % 2 == 0;
+      // Parse end date
+      final DateTime endDate = DateTime.parse(lottery.endDate);
+      final DateTime now = DateTime.now();
 
-      // Show result dialog with animation
-      showResultDialog(context, isWinner, lottery);
+      if (now.isBefore(endDate)) {
+        // Results not announced yet
+        final timeLeft = endDate.difference(now);
+        showPendingResultsDialog(context, timeLeft);
+        return;
+      }
+
+      // Results are available - check winning numbers
+      final List<String> winningNumbersStr = lottery.winningNumber.split(', ');
+      final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n)).toList();
+
+      // Count matching numbers
+      int matchCount = 0;
+      for (final num in selectedNumbers) {
+        if (winningNumbers.contains(num)) {
+          matchCount++;
+        }
+      }
+
+      // Determine prize based on match count
+      String prizeAmount = '0';
+      if (matchCount == selectedNumbers.length) {
+        prizeAmount = lottery.winningPrice; // Full match
+      } else if (matchCount >= 3) {
+        // Check partial wins based on lottery model
+        switch (matchCount) {
+          case 3:
+            prizeAmount = lottery.thirdWin;
+            break;
+          case 4:
+            prizeAmount = lottery.fourWin;
+            break;
+          case 5:
+            prizeAmount = lottery.fiveWin;
+            break;
+          case 6:
+            prizeAmount = lottery.sixWin;
+            break;
+          case 7:
+            prizeAmount = lottery.sevenWin;
+            break;
+          case 8:
+            prizeAmount = lottery.eightWin;
+            break;
+          case 9:
+            prizeAmount = lottery.nineWin;
+            break;
+          case 10:
+            prizeAmount = lottery.tenWin;
+            break;
+          default:
+            prizeAmount = '0';
+        }
+      }
+
+      // Show results
+      showResultDialog(
+        context,
+        matchCount == selectedNumbers.length, // isFullWin
+        lottery,
+        matchCount,
+        prizeAmount,
+        selectedNumbers.length,
+      );
     } catch (e) {
       print('Error processing QR code: $e');
       showErrorDialog(
@@ -154,7 +218,8 @@ class QRScannerService {
     }
   }
 
-  void showResultDialog(BuildContext context, bool isWinner, dynamic lottery) {
+// Add this new dialog for pending results
+  void showPendingResultsDialog(BuildContext context, Duration timeLeft) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -179,29 +244,139 @@ class QRScannerService {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Simple animation instead of Lottie
-                SizedBox(
-                  height: 150,
-                  width: 150,
-                  child: isWinner
-                      ? _buildWinnerAnimation()
-                      : _buildTryAgainAnimation(),
+                const Icon(
+                  Icons.access_time,
+                  size: 80,
+                  color: Colors.blue,
                 ),
                 const SizedBox(height: 20),
-                // Result text
-                Text(
-                  isWinner ? 'CONGRATULATIONS!' : 'BETTER LUCK NEXT TIME!',
+                const Text(
+                  'RESULTS PENDING',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: isWinner ? Colors.green[600] : Colors.red[600],
+                    color: Colors.blue,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  isWinner
-                      ? 'You won AED ${lottery.winningPrice}!'
-                      : 'Don\'t give up! Try again for a chance to win big!',
+                  'Results will be announced in:',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '${timeLeft.inDays}d ${timeLeft.inHours % 24}h ${timeLeft.inMinutes % 60}m',
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Please check back after the draw date to see if you won!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void showResultDialog(
+      BuildContext context,
+      bool isFullWin,
+      Lottery lottery,
+      int matchCount,
+      String prizeAmount,
+      int totalNumbers,
+      ) {
+    final bool hasPartialWin = matchCount >= 3 && !isFullWin;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 150,
+                  width: 150,
+                  child: isFullWin
+                      ? _buildWinnerAnimation()
+                      : hasPartialWin
+                      ? _buildPartialWinAnimation()
+                      : _buildTryAgainAnimation(),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  isFullWin
+                      ? 'JACKPOT WINNER!'
+                      : hasPartialWin
+                      ? 'PARTIAL WIN!'
+                      : 'BETTER LUCK NEXT TIME!',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: isFullWin
+                        ? Colors.green[600]
+                        : hasPartialWin
+                        ? Colors.orange[600]
+                        : Colors.red[600],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  isFullWin
+                      ? 'You matched all $totalNumbers numbers!\nYou won AED ${lottery.winningPrice}!'
+                      : hasPartialWin
+                      ? 'You matched $matchCount out of $totalNumbers numbers!\nYou won AED $prizeAmount!'
+                      : 'You matched $matchCount out of $totalNumbers numbers.\nTry again for a chance to win big!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -209,7 +384,6 @@ class QRScannerService {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Close button
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: ElevatedButton.styleFrom(
@@ -220,7 +394,7 @@ class QRScannerService {
                     ),
                   ),
                   child: Text(
-                    isWinner ? 'CLAIM PRIZE' : 'TRY AGAIN',
+                    isFullWin || hasPartialWin ? 'CLAIM PRIZE' : 'TRY AGAIN',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -235,6 +409,52 @@ class QRScannerService {
     );
   }
 
+// Add this new animation for partial wins
+  Widget _buildPartialWinAnimation() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1500),
+      builder: (context, value, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Rotating circle
+            Transform.rotate(
+              angle: value * 2 * 3.14159,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.5),
+                    width: 8,
+                  ),
+                ),
+              ),
+            ),
+            // Dollar sign
+            Icon(
+              Icons.attach_money,
+              size: 80,
+              color: Colors.orange[600],
+            ),
+            // Sparkles
+            if (value > 0.5)
+              Positioned(
+                right: 20,
+                top: 20,
+                child: Icon(
+                  Icons.star,
+                  size: 30 * (value - 0.5) * 2,
+                  color: Colors.orange[300],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
   // Simple winner animation using built-in Flutter animations
   Widget _buildWinnerAnimation() {
     return TweenAnimationBuilder(
