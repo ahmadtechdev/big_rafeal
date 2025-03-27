@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:lottery_app/widget/qr_scanner_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart'; // Alternative to qr_code_scanner
+import 'models/lottery_model.dart';
 import 'utils/app_colors.dart';
 import 'lottery_number_selection_screen_5.dart';
 import 'controllers/lottery_controller.dart';
@@ -52,12 +53,14 @@ class LotteryCardsScreen extends StatelessWidget {
             ),
           );
         } else {
+          // Update the ListView.builder section in the build method
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             physics: const BouncingScrollPhysics(),
             itemCount: lotteryController.lotteries.length,
             itemBuilder: (context, index) {
-              final lottery = lotteryController.lotteries[index];
+              final sortedLotteries = _getSortedLotteries(lotteryController.lotteries);
+              final lottery = sortedLotteries[index];
               return _buildLotteryCard(
                 context: context,
                 lotteryId: lottery.id,
@@ -72,6 +75,21 @@ class LotteryCardsScreen extends StatelessWidget {
         }
       }),
     );
+  }
+
+  List<Lottery> _getSortedLotteries(List<Lottery> lotteries) {
+    return lotteries.toList()
+      ..sort((a, b) {
+        final aExpired = _isDatePassed(a.endDate);
+        final bExpired = _isDatePassed(b.endDate);
+
+        // If both are active or both are expired, sort by end date
+        if (aExpired == bExpired) {
+          return DateTime.parse(a.endDate).compareTo(DateTime.parse(b.endDate));
+        }
+        // Active cards come before expired cards
+        return aExpired ? 1 : -1;
+      });
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {

@@ -75,7 +75,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text(
-          'My Lottery Tickets',
+          'My Tickets Sales',
           style: TextStyle(color: AppColors.textLight),
         ),
         centerTitle: true,
@@ -116,7 +116,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                 Obx(() {
                   final user = _userController.currentUser.value;
                   return Text(
-                    user != null ? '${user.name}\'s Lottery History' : 'Lottery History',
+                    user != null ? '${user.name}\'s Ticket History' : 'Ticket History',
                     style: const TextStyle(
                       color: AppColors.textLight,
                       fontSize: 16,
@@ -126,7 +126,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                 }),
                 const SizedBox(height: 8),
                 const Text(
-                  'All your lottery tickets in one place',
+                  'All your sale tickets in one place',
                   style: TextStyle(
                     color: AppColors.textLight,
                     fontSize: 14,
@@ -208,7 +208,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Try purchasing a lottery ticket to see your history here',
+                          'Try to sell a lottery ticket to see your history here',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,
@@ -232,7 +232,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                               borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          child: const Text('Buy a Lottery Ticket'),
+                          child: const Text('Sell a Lottery Ticket'),
                         ),
                       ],
                     ),
@@ -331,7 +331,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Ticket ID: ${lottery.lotteryId}',
+                                  'Ticket ID: ${lottery.lotteryCode}',
                                   style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
@@ -340,24 +340,24 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                               ],
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: statusColor,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              statusText,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
+                          // Container(
+                          //   padding: const EdgeInsets.symmetric(
+                          //     horizontal: 12,
+                          //     vertical: 6,
+                          //   ),
+                          //   decoration: BoxDecoration(
+                          //     color: statusColor,
+                          //     borderRadius: BorderRadius.circular(20),
+                          //   ),
+                          //   child: Text(
+                          //     statusText,
+                          //     style: const TextStyle(
+                          //       color: Colors.white,
+                          //       fontWeight: FontWeight.bold,
+                          //       fontSize: 12,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
@@ -404,7 +404,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '\$${lottery.purchasePrice}',
+                                      'AED ${lottery.purchasePrice}',
                                       style: const TextStyle(
                                         color: AppColors.textDark,
                                         fontWeight: FontWeight.w500,
@@ -490,23 +490,23 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                             ),
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            statusText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        // Container(
+                        //   padding: const EdgeInsets.symmetric(
+                        //     horizontal: 16,
+                        //     vertical: 8,
+                        //   ),
+                        //   decoration: BoxDecoration(
+                        //     color: statusColor,
+                        //     borderRadius: BorderRadius.circular(20),
+                        //   ),
+                        //   child: Text(
+                        //     statusText,
+                        //     style: const TextStyle(
+                        //       color: Colors.white,
+                        //       fontWeight: FontWeight.bold,
+                        //     ),
+                        //   ),
+                        // ),
                       ],
                     ),
                     const SizedBox(height: 24),
@@ -532,12 +532,9 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                           ),
                           const Divider(color: AppColors.dividerColor, thickness: 1.5),
                           const SizedBox(height: 8),
-                          _detailRow('Ticket ID', lottery.lotteryId),
+                          _detailRow('Ticket ID', lottery.lotteryCode ?? ''),
                           _detailRow('Purchase Date', _formatDate(lottery.lotteryIssueDate)),
-                          _detailRow('Created At', _formatDate(lottery.createdAt)),
-                          _detailRow('Updated At', _formatDate(lottery.updatedAt)),
-                          if (lottery.lotteryCode != null && lottery.lotteryCode!.isNotEmpty)
-                            _detailRow('Lottery Code', lottery.lotteryCode!),
+
                         ],
                       ),
                     ),
@@ -587,7 +584,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '\$${lottery.purchasePrice}',
+                                      'AED ${lottery.purchasePrice}',
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -602,7 +599,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      'Potential Prize',
+                                      'Winning Prize',
                                       style: TextStyle(
                                         color: AppColors.textGrey,
                                         fontSize: 14,
@@ -610,7 +607,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '\$${lottery.winningPrice}',
+                                      'AED ${lottery.winningPrice}',
                                       style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
@@ -664,7 +661,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Number of Tickets: ${lottery.numberOfLottery}',
+                            'Number in Tickets: ${lottery.numberOfLottery}',
                             style: const TextStyle(
                               color: AppColors.textGrey,
                               fontSize: 14,

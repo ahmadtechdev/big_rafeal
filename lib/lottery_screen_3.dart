@@ -328,12 +328,10 @@ class LotteryScreen extends StatelessWidget {
                         Get.offAll(() => LoginScreen());
                       },
                     );
-                  } else if (value == 'lottery') {
-                    Get.to(() => LotteryHistoryScreen());
                   }
                 },
                 itemBuilder: (BuildContext context) {
-                  return {'Lottery History', 'Logout'}.map((String choice) {
+                  return { 'Logout'}.map((String choice) {
                     return PopupMenuItem<String>(
                       value: choice.toLowerCase().replaceAll(' ', ''),
                       child: Text(choice),
@@ -547,26 +545,32 @@ class LotteryScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           // Prize Details button
-          Container(
-            height: 50,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryColor.withOpacity(0.2),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Center(
-              child: Text(
-                'Prize Details',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+          GestureDetector(
+            onTap: (){
+              Get.to(() => LotteryHistoryScreen(), transition: Transition.rightToLeft,);
+
+            },
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryColor.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'Ticket Sale History',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ),
