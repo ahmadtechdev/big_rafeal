@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
+import 'package:lottery_app/sale_report.dart';
 import 'package:lottery_app/widget/qr_scanner_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'controllers/user_controller.dart';
@@ -302,6 +303,7 @@ class LotteryScreen extends StatelessWidget {
                   color: AppColors.primaryColor,
                 ),
                 onSelected: (value) async {
+                  print(value);
                   // Update the logout section in PopupMenuButton:
                   if (value == 'logout') {
                     Get.defaultDialog(
@@ -328,10 +330,12 @@ class LotteryScreen extends StatelessWidget {
                         Get.offAll(() => LoginScreen());
                       },
                     );
+                  }else if(value =='report'){
+                    navigate();
                   }
                 },
                 itemBuilder: (BuildContext context) {
-                  return { 'Logout'}.map((String choice) {
+                  return { 'Report','Logout'}.map((String choice) {
                     return PopupMenuItem<String>(
                       value: choice.toLowerCase().replaceAll(' ', ''),
                       child: Text(choice),
@@ -344,6 +348,9 @@ class LotteryScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+  void navigate (){
+    Get.to(()=> SalesReportScreen());
   }
 
   Widget _buildBanner(BuildContext context) {
@@ -860,4 +867,5 @@ class _NextDrawTimerState extends State<NextDrawTimer> {
       ),
     );
   }
+
 }

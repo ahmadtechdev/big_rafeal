@@ -187,8 +187,8 @@ class _TicketDetailsScreenState extends State<TicketDetailsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               children: [
-                _buildInfoRow('Verification Code', widget.verificationCode),
-                const Divider(height: 24, color: AppColors.dividerColor, thickness: 1),
+                // _buildInfoRow('Verification Code', widget.verificationCode),
+                // const Divider(height: 24, color: AppColors.dividerColor, thickness: 1),
                 _buildInfoRow('Price (inclusive VAT 5%)', 'AED ${widget.price}'),
                 const Divider(height: 24, color: AppColors.dividerColor, thickness: 1),
                 _buildInfoRow('Purchased On', widget.purchaseDateTime),

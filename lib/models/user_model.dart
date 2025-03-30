@@ -3,7 +3,7 @@ class User {
   final int id;
   final String name;
   final String email;
-  final String phone;
+  final String shopName;
   final String? emailVerifiedAt;
   final String role;
   final String createdAt;
@@ -13,7 +13,7 @@ class User {
     required this.id,
     required this.name,
     required this.email,
-    required this.phone,
+    required this.shopName,
     this.emailVerifiedAt,
     required this.role,
     required this.createdAt,
@@ -25,7 +25,7 @@ class User {
       id: json['id'],
       name: json['name'] ?? '',
       email: json['email'] ?? '',
-      phone: json['phone'] ?? '',
+      shopName: json['shop_name'] ?? '',
       emailVerifiedAt: json['email_verified_at']?? '',
       role: json['role']?? '',
       createdAt: json['created_at'] ?? '',
@@ -38,7 +38,7 @@ class User {
       'id': id,
       'name': name,
       'email': email,
-      'phone': phone,
+      'phone': shopName,
       'email_verified_at': emailVerifiedAt,
       'role': role,
       'created_at': createdAt,

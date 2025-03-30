@@ -128,11 +128,24 @@ class QRScannerService {
       // Parse the JSON data from QR code
       final Map<String, dynamic> qrDataMap = jsonDecode(qrData);
 
-      final int lotteryId = qrDataMap['lotteryId'];
-      final String ticketId = qrDataMap['ticketId'];
-      final int rowIndex = qrDataMap['rowIndex'];
-      final List<int> selectedNumbers = List<int>.from(qrDataMap['selectedNumbers']);
-      final DateTime purchaseDate = DateTime.parse(qrDataMap['purchaseDate']);
+      final int lotteryId = qrDataMap['l'];
+      final String ticketId = qrDataMap['t'];
+      final int rowIndex = qrDataMap['r'];
+
+      // Handle numbers conversion
+      final String numbersString = qrDataMap['n'];
+      final List<int> selectedNumbers = numbersString.split(',').map((n) => int.parse(n.trim())).toList();
+
+      // Handle timestamp conversion
+      final int timestamp = qrDataMap['d'];
+      final DateTime purchaseDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
+
+      print("QR Data:");
+      print("Lottery ID: $lotteryId");
+      print("Ticket ID: $ticketId");
+      print("Row Index: $rowIndex");
+      print("Selected Numbers: $selectedNumbers");
+      print("Purchase Date: $purchaseDate");
 
       // Find the lottery by ID
       final lottery = lotteryController.lotteries.firstWhere(
@@ -207,17 +220,17 @@ class QRScannerService {
         matchCount,
         prizeAmount,
         selectedNumbers.length,
+        selectedNumbers, // Add this line to pass the selected numbers
       );
     } catch (e) {
       print('Error processing QR code: $e');
       showErrorDialog(
         context,
         'Invalid Ticket',
-        'The scanned ticket is invalid or expired.',
+        'The scanned ticket is invalid or expired. Error: ${e.toString()}',
       );
     }
   }
-
 // Add this new dialog for pending results
   void showPendingResultsDialog(BuildContext context, Duration timeLeft) {
     showDialog(
@@ -317,8 +330,16 @@ class QRScannerService {
       int matchCount,
       String prizeAmount,
       int totalNumbers,
+      List<int> selectedNumbers,
       ) {
     final bool hasPartialWin = matchCount >= 3 && !isFullWin;
+
+    // Get winning numbers
+    final List<String> winningNumbersStr = lottery.winningNumber.split(', ');
+    final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n)).toList();
+
+    // Get user's selected numbers (you'll need to pass these to the method)
+    final List<int> selectedNumbers = []; // Replace with actual selected numbers from QR code
 
     showDialog(
       context: context,
@@ -376,12 +397,94 @@ class QRScannerService {
                       ? 'You matched all $totalNumbers numbers!\nYou won AED ${lottery.winningPrice}!'
                       : hasPartialWin
                       ? 'You matched $matchCount out of $totalNumbers numbers!\nYou won AED $prizeAmount!'
-                      : 'You matched $matchCount out of $totalNumbers numbers.\nTry again for a chance to win big!',
+                      : 'Try again for a chance to win big!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.grey[700],
                   ),
+                ),
+                const SizedBox(height: 16),
+                // Add this section to show the numbers
+                Column(
+                  children: [
+                    const Text(
+                      'Your Numbers:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: selectedNumbers.map((number) {
+                        final isMatched = winningNumbers.contains(number);
+                        return Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isMatched ? Colors.green[100] : Colors.red[100],
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: isMatched ? Colors.green : Colors.red,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              number.toString(),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: isMatched ? Colors.green[800] : Colors.red[800],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Winning Numbers:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: winningNumbers.map((number) {
+                        return Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.blue,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              number.toString(),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -408,7 +511,6 @@ class QRScannerService {
       },
     );
   }
-
 // Add this new animation for partial wins
   Widget _buildPartialWinAnimation() {
     return TweenAnimationBuilder(

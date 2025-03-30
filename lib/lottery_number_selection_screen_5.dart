@@ -17,6 +17,7 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
   final double price;
   final int lotteryId;
   final String endDate;
+  final int maxNumber;
 
   LotteryNumberSelectionScreen({
     super.key,
@@ -26,6 +27,7 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
     required this.price,
     required this.lotteryId,
     required this.endDate,
+    required this.maxNumber,
   });
 
   @override
@@ -133,12 +135,8 @@ class _LotteryNumberSelectionScreenState
   void _selectNumber(int number) {
     setState(() {
       List<int> currentRowNumbers = selectedNumbersRows[activeRowIndex];
-      if (currentRowNumbers.contains(number)) {
-        currentRowNumbers.remove(number);
-      } else {
-        if (currentRowNumbers.length < widget.numbersPerRow) {
-          currentRowNumbers.add(number);
-        }
+      if (currentRowNumbers.length < widget.numbersPerRow) {
+        currentRowNumbers.add(number);
       }
       selectedNumbersRows[activeRowIndex] = currentRowNumbers;
     });
@@ -743,7 +741,7 @@ class _LotteryNumberSelectionScreenState
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount: 25,
+              itemCount: widget.maxNumber,
               itemBuilder: (context, index) {
                 final number = index + 1;
                 final isSelected = selectedNumbersRows[activeRowIndex].contains(

@@ -87,24 +87,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   // Generate QR code with lottery code included
   // Update the _generateQrCode method in CheckoutScreen
+  // Update the QR code generation to ensure better scannability
   Future<Uint8List> _generateQrCode(String ticketId, int rowIndex) async {
     try {
-      // Create a JSON object containing all necessary data
+      // Simplify the QR data to make it smaller and more scannable
       final qrData = {
-        'lotteryId': widget.lotteryId,
-        'ticketId': ticketId,
-        'rowIndex': rowIndex,
-        'selectedNumbers': widget.selectedNumbers[rowIndex],
-        'purchaseDate': DateTime.now().toIso8601String(),
+        't': ticketId,       // shorter key names
+        'r': rowIndex,
+        'n': widget.selectedNumbers[rowIndex].join(','), // comma-separated numbers
+        'd': DateTime.now().millisecondsSinceEpoch, // timestamp
+        'l': widget.lotteryId,
       };
 
-      // Convert to JSON string
-      final String qrDataString = jsonEncode(qrData);
-
+      // Use a lower error correction level to make the QR code less dense
       final qrValidationResult = QrValidator.validate(
-        data: qrDataString,
+        data: jsonEncode(qrData),
         version: QrVersions.auto,
-        errorCorrectionLevel: QrErrorCorrectLevel.M,
+        errorCorrectionLevel: QrErrorCorrectLevel.L, // Changed from M to L (Low)
       );
 
       if (qrValidationResult.status != QrValidationStatus.valid) {
@@ -120,10 +119,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         embeddedImage: null,
       );
 
-      final qrImageSize = 200.0;
+      // Increase QR code size and add white border
+      final qrImageSize = 250.0; // Increased from 200
       final pictureRecorder = ui.PictureRecorder();
       final canvas = ui.Canvas(pictureRecorder);
-      painter.paint(canvas, Size(qrImageSize, qrImageSize));
+
+      // Add white background
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, qrImageSize, qrImageSize),
+        Paint()..color = Colors.white,
+      );
+
+      // Draw QR code with padding - we'll scale it down to 80% of the canvas
+      final qrPaintSize = qrImageSize * 0.8;
+      final qrOffset = qrImageSize * 0.1;
+
+      // Save the canvas state, translate to the offset position, then paint
+      canvas.save();
+      canvas.translate(qrOffset, qrOffset);
+      painter.paint(canvas, Size(qrPaintSize, qrPaintSize));
+      canvas.restore();
+
       final picture = pictureRecorder.endRecording();
       final img = await picture.toImage(qrImageSize.toInt(), qrImageSize.toInt());
       final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
@@ -134,7 +150,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return Uint8List.fromList([]);
     }
   }
-
   // Load pencil logo image
   Future<Uint8List?> _loadPencilLogo() async {
     try {
@@ -149,7 +164,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // Load company logo image
   Future<Uint8List?> _loadCompanyLogo() async {
     try {
-      final ByteData data = await rootBundle.load('assets/logo.png');
+      final ByteData data = await rootBundle.load('assets/logo2.png');
       return data.buffer.asUint8List();
     } catch (e) {
       print('Error loading company logo: $e');
@@ -440,6 +455,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   //   }
   // }
 
+
+  String generateUniqueTicketId() {
+    // Get current timestamp in milliseconds
+    int timestamp = DateTime.now().millisecondsSinceEpoch;
+
+    // Convert to string and take last 6-8 digits
+    String ticketId = timestamp.toString().substring(
+        timestamp.toString().length - 8,
+        timestamp.toString().length - 2
+    );
+
+    return ticketId;
+  }
   Future<void> _printReceipts() async {
     setState(() {
       _isPrinting = true;
@@ -447,7 +475,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       // Generate common data
-      final String verificationCode = _generateVerificationCode();
+      _generateVerificationCode();
+      generateUniqueTicketId();
       final String purchaseDateTime = _getCurrentDateTime();
       final String drawDateTime = _getDrawDateTime();
 
@@ -457,10 +486,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final String winningNumbers = _currentLottery?.winningNumber ?? '';
       final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
       final String lotteryCode = _currentLottery?.lotteryCode ?? '';
+      final String endDate = _currentLottery?.endDate ?? '';
       final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
 
       // Get merchant name from user model or use default
       final String merchantName = _currentUser?.name ?? '';
+      final String shopName = _currentUser?.shopName ?? '';
 
       final User? user = _currentUser;
       if (user == null) {
@@ -471,14 +502,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Create API service instance
       final ApiService apiService = ApiService();
 
+      List<String> ticketIds = [];
+
       // Save each lottery row
       for (int i = 0; i < widget.selectedNumbers.length; i++) {
         final List<int> numbers = widget.selectedNumbers[i];
-        final String ticketId = "BIGR$lotteryCode";
+        final String ticketId = "BIGR${generateUniqueTicketId()}";
+        ticketIds.add(ticketId);
         final String product = '$lotteryNumbers x $lotteryName';
 
         // Format selected numbers for API
-        final String selectedNumbersStr = numbers.join(', ');
+        final String selectedNumbersStr = numbers.join(',');
 
         String winOrLoss ="loss";
         if(selectedNumbersStr==winningNumbers){
@@ -492,15 +526,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               userId: user.id,
               userName: user.name,
               userEmail: user.email,
-              userNumber: user.phone,
+              userNumber: user.shopName,
               lotteryName: lotteryName,
               purchasePrice: purchasePrice,
               winningPrice: winningPrice,
               lotteryCode: lotteryCode,
+              endDate: endDate,
               numberOfLottery: lotteryNumbers,
               selectedNumbers: selectedNumbersStr,
-              winOrLoss: winOrLoss
+              winOrLoss: winOrLoss, ticketId: ticketId
           );
+          print("data send to api");
         } catch (e) {
           _showSnackBar('Error saving ticket ${i+1}: $e');
           print('Error saving lottery sale: $e');
@@ -520,11 +556,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Add all receipts to the same document
       for (int i = 0; i < widget.selectedNumbers.length; i++) {
         final List<int> numbers = widget.selectedNumbers[i];
-        final String ticketId = "BIGR$lotteryCode";
+        final String ticketId = ticketIds[i];
         final String product = '$lotteryNumbers x $lotteryName';
 
         // Generate QR code with lottery code
-        final Uint8List qrImageData = await _generateQrCode(ticketId, i);
+        final Uint8List qrImageData = await _generateQrCode(lotteryCode, i);
 
         // Add receipt page to the document
         pdf.addPage(
@@ -537,27 +573,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     pw.SizedBox(height: 30),
                     // Header with logo - increased size
                     companyLogoData != null
-                        ? pw.Image(pw.MemoryImage(companyLogoData), width: 90, height: 30)
+                        ? pw.Image(pw.MemoryImage(companyLogoData), width: 100, height: 50)
                         : pw.Text('BIG RAFEAL',
                         style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 4),
 
                     // Info section - improved readability with bold text
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Verification Code:',
-                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                        pw.Text(verificationCode,
-                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      ],
-                    ),
+                    // pw.Row(
+                    //   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    //   children: [
+                    //     pw.Text('Verification Code:',
+                    //         style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    //     pw.Text(verificationCode,
+                    //         style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                    //   ],
+                    // ),
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
                         pw.Text('Price (inc. VAT 5%):',
                             style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                        pw.Text('AED 5',
+                        pw.Text('AED $purchasePrice',
                             style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                       ],
                     ),
@@ -587,7 +623,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       children: [
                         pw.Text('Product pencil:',
                             style: pw.TextStyle(fontSize: 9)),
-                        pw.Text('3.5 AED',
+                        pw.Text('${int.parse(purchasePrice)/5} x 3.5 AED',
                             style: pw.TextStyle(fontSize: 9)),
                       ],
                     ),
@@ -663,7 +699,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.end,
                       children: [
-                        pw.Text('PHONES LLC - 03',
+                        pw.Text(shopName,
                             style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                       ],
                     ),
@@ -687,8 +723,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                     // QR code - larger for better scanning
                     qrImageData.isNotEmpty
-                        ? pw.Image(pw.MemoryImage(qrImageData), width: 80, height: 80)
-                        : pw.Container(height: 80, width: 80),
+                        ? pw.Container(
+                        width: 100,
+                        height: 100,
+                        color: PdfColors.white,
+                        child: pw.Image(pw.MemoryImage(qrImageData))
+                    )
+                        : pw.Container(height: 100, width: 100),
 
                     // Footer with company details
                     pw.Text('BIG RAFEAL L.L.C',
@@ -697,8 +738,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         style: pw.TextStyle(fontSize: 8)),
                     pw.Text('visit www.bigrafeal.info',
                         style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                    pw.Text('or Call us @ 0554691351',
-                        style: pw.TextStyle(fontSize: 8)),
+                    // pw.Text('or Call us @ 0554691351',
+                    //     style: pw.TextStyle(fontSize: 8)),
                     pw.Text('info@bigrafeal.info',
                         style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 6),
@@ -735,10 +776,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Navigate to ticket details screen after printing
       if (mounted && widget.selectedNumbers.isNotEmpty) {
         final String lotteryCode = _currentLottery?.lotteryCode ?? '';
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => TicketDetailsScreen(
+
+          Get.offAll(
+            () => TicketDetailsScreen(
               selectedNumbersRows: widget.selectedNumbers,
               price: widget.price,
               ticketId: "BIGR$lotteryCode", // First ticket ID
@@ -746,8 +786,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               purchaseDateTime: _getCurrentDateTime(),
               product: '${widget.selectedNumbers.length} x ${_currentLottery?.lotteryName ?? 'GRAND 6'}',
             ),
-          ),
-        );
+          );
       }
     } catch (e) {
       _showSnackBar('Error printing receipts: $e');

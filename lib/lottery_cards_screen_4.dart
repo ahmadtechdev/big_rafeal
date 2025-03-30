@@ -69,6 +69,7 @@ class LotteryCardsScreen extends StatelessWidget {
                 drawDate: lottery.endDate,
                 prizeAmount: lottery.winningPrice.toString(),
                 circleCount: lottery.numberLottery,
+                maxNumbers: int.parse(lottery.digits),
               );
             },
           );
@@ -150,6 +151,7 @@ class LotteryCardsScreen extends StatelessWidget {
     required String drawDate,
     required String prizeAmount,
     required int circleCount,
+    required int maxNumbers,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -373,7 +375,8 @@ class LotteryCardsScreen extends StatelessWidget {
                     lotteryName: title,
                     numbersPerRow: circleCount,
                     price: price,
-                    endDate: drawDate, // Add this parameter
+                    endDate: drawDate,
+                        maxNumber: maxNumbers, // Add this parameter
                   ),
                   transition: Transition.rightToLeft,
                 );

@@ -331,7 +331,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Ticket ID: ${lottery.lotteryCode}',
+                                  'Ticket ID: ${lottery.ticketId}',
                                   style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 12,
@@ -532,7 +532,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                           ),
                           const Divider(color: AppColors.dividerColor, thickness: 1.5),
                           const SizedBox(height: 8),
-                          _detailRow('Ticket ID', lottery.lotteryCode ?? ''),
+                          _detailRow('Ticket ID', lottery.ticketId ?? ''),
                           _detailRow('Purchase Date', _formatDate(lottery.lotteryIssueDate)),
 
                         ],

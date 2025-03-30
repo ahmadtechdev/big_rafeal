@@ -2,6 +2,7 @@ class UserLottery {
   final int id;
   final int userId;
   final String lotteryId;
+  final String ticketId;
   final String userName;
   final String userEmail;
   final String userNumber;
@@ -20,6 +21,7 @@ class UserLottery {
   UserLottery({
     required this.id,
     required this.userId,
+    required this.ticketId,
     required this.lotteryId,
     required this.userName,
     required this.userEmail,
@@ -41,6 +43,7 @@ class UserLottery {
     return UserLottery(
       id: json['id'] ?? 0,
       userId: json['user_id'] ?? 0,
+      ticketId: json['ticket_id'] ?? '',
       lotteryId: json['lottery_id'] ?? '',
       userName: json['User_name'] ?? '',
       userEmail: json['User_email'] ?? '',

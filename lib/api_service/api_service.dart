@@ -5,7 +5,7 @@ import '../models/user_lottery_modal.dart';
 
 class ApiService {
   final Dio _dio = Dio();
-  final String _baseUrl = 'https://lottery.ifdot.shop/api';
+  final String _baseUrl = 'https://bigrafeal.info/api';
 
   // Fetch all lotteries
   Future<List<Lottery>> fetchLotteries() async {
@@ -145,28 +145,36 @@ class ApiService {
     required String purchasePrice,
     required String winningPrice,
     required String lotteryCode,
+    required String endDate,
     required String numberOfLottery,
     required String selectedNumbers,
-    String winOrLoss = "loss", // Default to "loss"
+    required String ticketId,
+    String winOrLoss = "loss",
   }) async {
     try {
       final headers = {'Content-Type': 'application/json'};
 
+
+
       final data = json.encode({
         "user_id": userId.toString(),
+        "ticket_id": ticketId,
         "User_name": userName,
         "User_email": userEmail,
         "User_number": userNumber,
         "lottery_name": lotteryName,
         "purchase_price": purchasePrice,
         "winning_price": winningPrice,
-        "image": "image", // Default value
+        "image": "", // Default value
         "lottery_code": lotteryCode,
+        "end_date": endDate,
         "number_of_lottery": numberOfLottery,
-        "lottery_issue_date": DateTime.now().toString(),
+        "lottery_issue_date": DateTime.now().toIso8601String(),
         "selected_numbers": selectedNumbers,
         "w_or_l": winOrLoss
       });
+
+      print('Sending data to API: $data'); // Debug log
 
       final response = await _dio.request(
         '$_baseUrl/add_lottery',
@@ -174,10 +182,15 @@ class ApiService {
         data: data,
       );
 
+      print('API Response: ${response.data}'); // Debug log
+
       return response.data;
     } on DioException catch (e) {
-      // Error handling remains the same
+      print('DioError: ${e.message}'); // Debug log
       if (e.response != null) {
+        print('Error response data: ${e.response?.data}'); // Debug log
+        print('Error status code: ${e.response?.statusCode}'); // Debug log
+
         if (e.response!.data is Map) {
           final errorMessage = e.response!.data['message'] ?? 'Sale saving failed';
           throw errorMessage;
@@ -192,9 +205,12 @@ class ApiService {
         throw 'Something went wrong. Please try again later.';
       }
     } catch (e) {
+      print('General Error: $e'); // Debug log
       throw 'Sale saving failed: $e';
     }
   }
+
+
 
   Future<List<UserLottery>> fetchUserLotteries(int userId) async {
     try {
