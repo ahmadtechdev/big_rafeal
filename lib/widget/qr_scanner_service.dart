@@ -9,6 +9,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../controllers/lottery_controller.dart';
 import '../controllers/lottery_result_controller.dart';
 import '../models/lottery_model.dart';
+import '../models/user_lottery_modal.dart';
 import '../utils/app_colors.dart';
 
 
@@ -123,9 +124,9 @@ class QRScannerService {
     });
   }
 
+// Then modify the processQRCode method:
   void processQRCode(BuildContext context, String qrData) async {
     try {
-
       final resultController = LotteryResultController.instance;
 
       // Parse the JSON data from QR code
@@ -142,13 +143,6 @@ class QRScannerService {
       // Handle timestamp conversion
       final int timestamp = qrDataMap['d'];
       final DateTime purchaseDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
-
-      print("QR Data:");
-      print("Lottery ID: $lotteryId");
-      print("Ticket ID: $ticketId");
-      print("Row Index: $rowIndex");
-      print("Selected Numbers: $selectedNumbers");
-      print("Purchase Date: $purchaseDate");
 
       // Find the lottery by ID
       final lottery = lotteryController.lotteries.firstWhere(
@@ -167,63 +161,36 @@ class QRScannerService {
         return;
       }
 
-      // Results are available - check winning numbers
-      final List<String> winningNumbersStr = lottery.winningNumber.split(', ');
-      final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n)).toList();
+      // Check the result
+      final userLottery = UserLottery(
+        id: 0,
+        userId: 0,
+        ticketId: ticketId,
+        lotteryId: lotteryId.toString(),
+        userName: '',
+        userEmail: '',
+        userNumber: '',
+        lotteryName: lottery.lotteryName,
+        purchasePrice: lottery.purchasePrice,
+        winningPrice: lottery.winningPrice,
+        numberOfLottery: '1',
+        lotteryIssueDate: purchaseDate.toString(),
+        selectedNumbers: numbersString,
+        wOrL: '',
+        createdAt: '',
+        updatedAt: '',
+        lotteryCode: lottery.lotteryCode,
+      );
 
-      // Count matching numbers
-      int matchCount = 0;
-      for (final num in selectedNumbers) {
-        if (winningNumbers.contains(num)) {
-          matchCount++;
-        }
-      }
+      final result = resultController.checkLotteryResult(userLottery, lottery);
 
-      // Determine prize based on match count
-      String prizeAmount = '0';
-      if (matchCount == selectedNumbers.length) {
-        prizeAmount = lottery.winningPrice; // Full match
-      } else if (matchCount >= 3) {
-        // Check partial wins based on lottery model
-        switch (matchCount) {
-          case 3:
-            prizeAmount = lottery.thirdWin;
-            break;
-          case 4:
-            prizeAmount = lottery.fourWin;
-            break;
-          case 5:
-            prizeAmount = lottery.fiveWin;
-            break;
-          case 6:
-            prizeAmount = lottery.sixWin;
-            break;
-          case 7:
-            prizeAmount = lottery.sevenWin;
-            break;
-          case 8:
-            prizeAmount = lottery.eightWin;
-            break;
-          case 9:
-            prizeAmount = lottery.nineWin;
-            break;
-          case 10:
-            prizeAmount = lottery.tenWin;
-            break;
-          default:
-            prizeAmount = '0';
-        }
-      }
 
-      // Show results
       showResultDialog(
         context,
-        matchCount == selectedNumbers.length, // isFullWin
+        result,
         lottery,
-        matchCount,
-        prizeAmount,
         selectedNumbers.length,
-        selectedNumbers, // Add this line to pass the selected numbers
+        selectedNumbers,
       );
     } catch (e) {
       print('Error processing QR code: $e');
@@ -328,21 +295,18 @@ class QRScannerService {
 
   void showResultDialog(
       BuildContext context,
-      bool isFullWin,
+      LotteryResult result,
       Lottery lottery,
-      int matchCount,
-      String prizeAmount,
       int totalNumbers,
       List<int> selectedNumbers,
       ) {
-    final bool hasPartialWin = matchCount >= 3 && !isFullWin;
+    final bool isFullWin = result.resultType == ResultType.fullWin;
+    final bool hasPartialWin = result.resultType == ResultType.partialWin;
+    final bool hasSequenceWin = result.resultType == ResultType.sequenceWin;
 
     // Get winning numbers
     final List<String> winningNumbersStr = lottery.winningNumber.split(', ');
     final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n)).toList();
-
-    // Get user's selected numbers (you'll need to pass these to the method)
-    final List<int> selectedNumbers = []; // Replace with actual selected numbers from QR code
 
     showDialog(
       context: context,
@@ -373,6 +337,8 @@ class QRScannerService {
                   width: 150,
                   child: isFullWin
                       ? _buildWinnerAnimation()
+                      : hasSequenceWin
+                      ? _buildSequenceWinAnimation()
                       : hasPartialWin
                       ? _buildPartialWinAnimation()
                       : _buildTryAgainAnimation(),
@@ -381,6 +347,8 @@ class QRScannerService {
                 Text(
                   isFullWin
                       ? 'JACKPOT WINNER!'
+                      : hasSequenceWin
+                      ? 'SEQUENCE WIN!'
                       : hasPartialWin
                       ? 'PARTIAL WIN!'
                       : 'BETTER LUCK NEXT TIME!',
@@ -389,6 +357,8 @@ class QRScannerService {
                     fontWeight: FontWeight.bold,
                     color: isFullWin
                         ? Colors.green[600]
+                        : hasSequenceWin
+                        ? Colors.blue[600]
                         : hasPartialWin
                         ? Colors.orange[600]
                         : Colors.red[600],
@@ -398,8 +368,10 @@ class QRScannerService {
                 Text(
                   isFullWin
                       ? 'You matched all $totalNumbers numbers!\nYou won AED ${lottery.winningPrice}!'
+                      : hasSequenceWin
+                      ? 'You matched ${result.matchCount} sequence numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
                       : hasPartialWin
-                      ? 'You matched $matchCount out of $totalNumbers numbers!\nYou won AED $prizeAmount!'
+                      ? 'You matched ${result.matchCount} out of $totalNumbers numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
                       : 'Try again for a chance to win big!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -408,7 +380,6 @@ class QRScannerService {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Add this section to show the numbers
                 Column(
                   children: [
                     const Text(
@@ -500,7 +471,7 @@ class QRScannerService {
                     ),
                   ),
                   child: Text(
-                    isFullWin || hasPartialWin ? 'CLAIM PRIZE' : 'TRY AGAIN',
+                    isFullWin || hasSequenceWin || hasPartialWin ? 'CLAIM PRIZE' : 'TRY AGAIN',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -510,6 +481,53 @@ class QRScannerService {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+// Add this new animation for sequence wins
+  Widget _buildSequenceWinAnimation() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1500),
+      builder: (context, value, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Rotating circle
+            Transform.rotate(
+              angle: value * 2 * 3.14159,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.blue.withOpacity(0.5),
+                    width: 8,
+                  ),
+                ),
+              ),
+            ),
+            // Sequence icon
+            Icon(
+              Icons.format_list_numbered,
+              size: 80,
+              color: Colors.blue[600],
+            ),
+            // Sparkles
+            if (value > 0.5)
+              Positioned(
+                right: 20,
+                top: 20,
+                child: Icon(
+                  Icons.star,
+                  size: 30 * (value - 0.5) * 2,
+                  color: Colors.blue[300],
+                ),
+              ),
+          ],
         );
       },
     );

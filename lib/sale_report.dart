@@ -11,6 +11,7 @@ import 'package:printing/printing.dart';
 import '../controllers/user_controller.dart';
 import '../models/user_lottery_modal.dart';
 import '../utils/app_colors.dart';
+import 'controllers/lottery_result_controller.dart';
 import 'controllers/sale_report_controller.dart';
 
 class SalesReportScreen extends StatelessWidget {
@@ -295,33 +296,32 @@ class SalesReportScreen extends StatelessWidget {
 
 
   Widget _buildSaleItem(UserLottery userLottery, int index) {
-    // Find corresponding lottery by properly matching IDs
+    final resultController = LotteryResultController.instance;
     final lottery = _reportController.findMatchingLottery(userLottery);
 
-
-    // Calculate winning amount
+    // Check results
+    final resultsAvailable = resultController.areResultsAvailable(lottery);
     double winningAmount = 0;
-    bool resultsAvailable = false;
+    bool isWin = false;
 
-    if (lottery.endDate.isNotEmpty) {
-      final endDate = DateTime.tryParse(lottery.endDate);
-      if (endDate != null && DateTime.now().isAfter(endDate)) {
-        resultsAvailable = true;
-        winningAmount = _reportController.calculateWinningAmount(
-          userLottery,
-          lottery,
-        );
-      }
+    if (resultsAvailable) {
+      final result = resultController.checkLotteryResult(userLottery, lottery);
+      winningAmount = result.prizeAmount;
+      isWin = result.resultType == ResultType.fullWin ||
+          result.resultType == ResultType.sequenceWin ||
+          result.resultType == ResultType.partialWin;
     }
 
-    final isWin = winningAmount > 0;
-    final statusColor =
-        isWin ? Colors.green : (resultsAvailable ? Colors.red : Colors.orange);
-    final statusText = isWin ? 'WIN' : (resultsAvailable ? 'LOSS' : 'PENDING');
-    final statusIcon =
-        isWin
-            ? Icons.emoji_events
-            : (resultsAvailable ? Icons.cancel : Icons.access_time);
+    final statusColor = isWin
+        ? Colors.green
+        : (resultsAvailable ? Colors.red : Colors.orange);
+    final statusText = isWin
+        ? 'WIN'
+        : (resultsAvailable ? 'LOSS' : 'PENDING');
+    final statusIcon = isWin
+        ? Icons.emoji_events
+        : (resultsAvailable ? Icons.cancel : Icons.access_time);
+
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -663,7 +663,12 @@ class SalesReportScreen extends StatelessWidget {
                             style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                         pw.Text('${_reportController.filteredLotteries.where((l) {
                           final lottery = _reportController.findMatchingLottery(l);
-                          return _reportController.calculateWinningAmount(l, lottery) > 0;
+                          final resultController = LotteryResultController.instance;
+                          if (resultController.areResultsAvailable(lottery)) {
+                            final result = resultController.checkLotteryResult(l, lottery);
+                            return result.prizeAmount > 0;
+                          }
+                          return false;
                         }).length}',
                             style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                       ],

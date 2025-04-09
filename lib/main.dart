@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'controllers/lottery_result_controller.dart';
 import 'controllers/user_controller.dart';
 import 'home_screen_1.dart';
 import 'lottery_screen_3.dart';
@@ -13,6 +14,7 @@ Future<void> main() async {
 
   // Put UserController in memory
   Get.put(UserController(), permanent: true);
+  Get.put(LotteryResultController());
   runApp(const MyApp());
 }
 

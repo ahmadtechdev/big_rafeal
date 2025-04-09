@@ -5,6 +5,7 @@ import '../controllers/lottery_controller.dart';
 import '../controllers/user_controller.dart';
 import '../models/lottery_model.dart';
 import '../models/user_lottery_modal.dart';
+import 'lottery_result_controller.dart';
 
 class SalesReportController extends GetxController {
   final ApiService _apiService = ApiService();
@@ -55,7 +56,13 @@ class SalesReportController extends GetxController {
     }
   }
 
+// In sale_report_controller.dart
+// Add this at the top with other imports
+
+// Then modify the _filterAndCalculateTotals method:
   void _filterAndCalculateTotals(List<UserLottery> userLotteries) {
+    final resultController = LotteryResultController.instance;
+
     // Filter lotteries within date range
     filteredLotteries.value = userLotteries.where((lottery) {
       try {
@@ -76,17 +83,13 @@ class SalesReportController extends GetxController {
       final salePrice = double.tryParse(userLottery.purchasePrice) ?? 0;
       sales += salePrice;
 
-      // Find corresponding lottery and calculate winnings
+      // Find corresponding lottery
       final lottery = findMatchingLottery(userLottery);
 
       // Only calculate winnings if results are announced
-      if (lottery.endDate.isNotEmpty) {
-        final endDate = DateTime.tryParse(lottery.endDate);
-        if (endDate != null && DateTime.now().isAfter(endDate)) {
-          // Calculate winning amount
-          final winningAmount = calculateWinningAmount(userLottery, lottery);
-          winnings += winningAmount;
-        }
+      if (resultController.areResultsAvailable(lottery)) {
+        final result = resultController.checkLotteryResult(userLottery, lottery);
+        winnings += result.prizeAmount;
       }
     }
 
@@ -100,6 +103,7 @@ class SalesReportController extends GetxController {
     payableToAdmin.value = netSales - userCommission.value;
   }
 
+// You can remove the calculateWinningAmount method since it's now in LotteryResultController
   // Helper method to properly find matching lottery by ID
   Lottery findMatchingLottery(UserLottery userLottery) {
     // First try matching by lotteryId directly
@@ -145,54 +149,54 @@ class SalesReportController extends GetxController {
     );
   }
 
-  double calculateWinningAmount(UserLottery userLottery, Lottery lottery) {
-    try {
-      // Parse selected numbers
-      final List<String> selectedNumbersStr = userLottery.selectedNumbers.split(',');
-      final List<int> selectedNumbers = selectedNumbersStr.map((n) => int.parse(n.trim())).toList();
-
-      // Parse winning numbers
-      final List<String> winningNumbersStr = lottery.winningNumber.split(', ');
-      final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n.trim())).toList();
-
-      // Count matching numbers
-      int matchCount = 0;
-      for (final num in selectedNumbers) {
-        if (winningNumbers.contains(num)) {
-          matchCount++;
-        }
-      }
-
-      // Determine prize based on match count
-      if (matchCount == selectedNumbers.length) {
-        return double.parse(lottery.winningPrice); // Full match
-      } else if (matchCount >= 3) {
-        // Check partial wins based on lottery model
-        switch (matchCount) {
-          case 3:
-            return double.parse(lottery.thirdWin);
-          case 4:
-            return double.parse(lottery.fourWin);
-          case 5:
-            return double.parse(lottery.fiveWin);
-          case 6:
-            return double.parse(lottery.sixWin);
-          case 7:
-            return double.parse(lottery.sevenWin);
-          case 8:
-            return double.parse(lottery.eightWin);
-          case 9:
-            return double.parse(lottery.nineWin);
-          case 10:
-            return double.parse(lottery.tenWin);
-          default:
-            return 0;
-        }
-      }
-      return 0;
-    } catch (e) {
-      print('Error calculating winning amount: $e');
-      return 0;
-    }
-  }
+  // double calculateWinningAmount(UserLottery userLottery, Lottery lottery) {
+  //   try {
+  //     // Parse selected numbers
+  //     final List<String> selectedNumbersStr = userLottery.selectedNumbers.split(',');
+  //     final List<int> selectedNumbers = selectedNumbersStr.map((n) => int.parse(n.trim())).toList();
+  //
+  //     // Parse winning numbers
+  //     final List<String> winningNumbersStr = lottery.winningNumber.split(', ');
+  //     final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n.trim())).toList();
+  //
+  //     // Count matching numbers
+  //     int matchCount = 0;
+  //     for (final num in selectedNumbers) {
+  //       if (winningNumbers.contains(num)) {
+  //         matchCount++;
+  //       }
+  //     }
+  //
+  //     // Determine prize based on match count
+  //     if (matchCount == selectedNumbers.length) {
+  //       return double.parse(lottery.winningPrice); // Full match
+  //     } else if (matchCount >= 3) {
+  //       // Check partial wins based on lottery model
+  //       switch (matchCount) {
+  //         case 3:
+  //           return double.parse(lottery.thirdWin);
+  //         case 4:
+  //           return double.parse(lottery.fourWin);
+  //         case 5:
+  //           return double.parse(lottery.fiveWin);
+  //         case 6:
+  //           return double.parse(lottery.sixWin);
+  //         case 7:
+  //           return double.parse(lottery.sevenWin);
+  //         case 8:
+  //           return double.parse(lottery.eightWin);
+  //         case 9:
+  //           return double.parse(lottery.nineWin);
+  //         case 10:
+  //           return double.parse(lottery.tenWin);
+  //         default:
+  //           return 0;
+  //       }
+  //     }
+  //     return 0;
+  //   } catch (e) {
+  //     print('Error calculating winning amount: $e');
+  //     return 0;
+  //   }
+  // }
 }
