@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:lottery_app/sale_report.dart';
 import 'package:lottery_app/widget/qr_scanner_service.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'api_service/api_service.dart';
 import 'controllers/user_controller.dart';
 import 'login_screen_2.dart';
 import 'lottery_sale.dart';
@@ -104,6 +103,27 @@ class LotteryScreen extends StatelessWidget {
                           ),
                         ),
                         child: const Text(
+                          'Ticket Sale History',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () => Get.to(()=>LotteryHistoryScreen()),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        child: const Text(
                           'Refresh',
                           style: TextStyle(
                             color: Colors.white,
@@ -190,7 +210,7 @@ class LotteryScreen extends StatelessWidget {
                     for (var lottery in lotteryController.lotteries.where((lottery) => !_isLotteryExpired(lottery.endDate)))
                       _buildLotterySection(
                         context,
-                        lottery.lotteryName ?? 'Number ${lottery.numberLottery}',
+                        lottery.lotteryName,
                         lottery.winningPrice.toString(),
                         lottery.numberLottery,
                         generateSequentialNumbers(lottery.numberLottery),
@@ -512,6 +532,8 @@ class LotteryScreen extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final UserController userController = Get.put(UserController());
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -519,11 +541,58 @@ class LotteryScreen extends StatelessWidget {
         children: [
           // Play button
           GestureDetector(
-            onTap: () {
-              Get.to(
-                () => LotteryCardsScreen(),
-                transition: Transition.rightToLeft,
-              );
+            onTap: () async {
+              if (userController.currentUser.value == null) {
+                Get.snackbar(
+                  'Error',
+                  'User not logged in',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+                return;
+              }
+
+              try {
+                // Show loading indicator
+                Get.dialog(
+                  const Center(child: CircularProgressIndicator()),
+                  barrierDismissible: false,
+                );
+
+                // Check if user exists
+                final userExists = await ApiService().checkUserExists(userController.currentUser.value!.id);
+
+                Get.back(); // Dismiss loading indicator
+
+                if (!userExists) {
+                  // Logout user if doesn't exist
+                  userController.clearUser();
+                  Get.offAll(() => LoginScreen());
+                  Get.snackbar(
+                    'Session Expired',
+                    'Your account no longer exists',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white,
+                  );
+                } else {
+                  // Proceed to play
+                  Get.to(
+                        () => LotteryCardsScreen(),
+                    transition: Transition.rightToLeft,
+                  );
+                }
+              } catch (e) {
+                Get.back(); // Dismiss loading indicator
+                Get.snackbar(
+                  'Error',
+                  'Failed to verify user: $e',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+              }
             },
             child: Container(
               height: 50,
@@ -553,9 +622,8 @@ class LotteryScreen extends StatelessWidget {
           const SizedBox(height: 24),
           // Prize Details button
           GestureDetector(
-            onTap: (){
-              Get.to(() => LotteryHistoryScreen(), transition: Transition.rightToLeft,);
-
+            onTap: () {
+              Get.to(() => LotteryHistoryScreen(), transition: Transition.rightToLeft);
             },
             child: Container(
               height: 50,
@@ -729,14 +797,63 @@ class LotteryScreen extends StatelessWidget {
           ),
 
           // Play button
+          // Play button
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: InkWell(
-              onTap: () {
-                Get.to(
-                  () => LotteryCardsScreen(),
-                  transition: Transition.rightToLeft,
-                );
+              onTap: () async {
+                final userController = Get.find<UserController>();
+                if (userController.currentUser.value == null) {
+                  Get.snackbar(
+                    'Error',
+                    'User not logged in',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white,
+                  );
+                  return;
+                }
+
+                try {
+                  // Show loading indicator
+                  Get.dialog(
+                    const Center(child: CircularProgressIndicator()),
+                    barrierDismissible: false,
+                  );
+
+                  // Check if user exists
+                  final userExists = await ApiService().checkUserExists(userController.currentUser.value!.id);
+
+                  Get.back(); // Dismiss loading indicator
+
+                  if (!userExists) {
+                    // Logout user if doesn't exist
+                    userController.clearUser();
+                    Get.offAll(() => LoginScreen());
+                    Get.snackbar(
+                      'Session Expired',
+                      'Your account no longer exists',
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: Colors.red,
+                      colorText: Colors.white,
+                    );
+                  } else {
+                    // Proceed to play
+                    Get.to(
+                          () => LotteryCardsScreen(),
+                      transition: Transition.rightToLeft,
+                    );
+                  }
+                } catch (e) {
+                  Get.back(); // Dismiss loading indicator
+                  Get.snackbar(
+                    'Error',
+                    'Failed to verify user: $e',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white,
+                  );
+                }
               },
               child: Container(
                 height: 42,

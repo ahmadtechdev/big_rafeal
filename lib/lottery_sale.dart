@@ -256,9 +256,6 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
   }
 
   Widget _buildLotteryCard(UserLottery lottery, int index) {
-    final isWin = lottery.wOrL.toLowerCase() == 'win';
-    final statusColor = isWin ? Colors.green : Colors.red;
-    final statusText = isWin ? 'WIN' : 'Loss';
 
     // Add a slight delay for each card to create a staggered animation effect
     return AnimatedOpacity(
@@ -444,9 +441,6 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
   }
 
   void _showLotteryDetails(UserLottery lottery) {
-    final isWin = lottery.wOrL.toLowerCase() == 'win';
-    final statusColor = isWin ? Colors.green : Colors.red;
-    final statusText = isWin ? 'WIN' : 'LOSS';
 
     showModalBottomSheet(
       context: context,
@@ -532,7 +526,7 @@ class _LotteryHistoryScreenState extends State<LotteryHistoryScreen> {
                           ),
                           const Divider(color: AppColors.dividerColor, thickness: 1.5),
                           const SizedBox(height: 8),
-                          _detailRow('Ticket ID', lottery.ticketId ?? ''),
+                          _detailRow('Ticket ID', lottery.ticketId),
                           _detailRow('Purchase Date', _formatDate(lottery.lotteryIssueDate)),
 
                         ],

@@ -1,16 +1,14 @@
 // lottery_cards_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:lottery_app/widget/qr_scanner_service.dart';
-import 'package:mobile_scanner/mobile_scanner.dart'; // Alternative to qr_code_scanner
+// Alternative to qr_code_scanner
 import 'models/lottery_model.dart';
 import 'utils/app_colors.dart';
 import 'lottery_number_selection_screen_5.dart';
 import 'controllers/lottery_controller.dart';
 
 // Import needed for math functions
-import 'dart:math' as math;
 
 class LotteryCardsScreen extends StatelessWidget {
   final LotteryController lotteryController = Get.put(LotteryController());
@@ -64,7 +62,7 @@ class LotteryCardsScreen extends StatelessWidget {
               return _buildLotteryCard(
                 context: context,
                 lotteryId: lottery.id,
-                title: lottery.lotteryName ?? 'Lottery Name',
+                title: lottery.lotteryName,
                 price: double.parse(lottery.purchasePrice.toString()),
                 drawDate: lottery.endDate,
                 prizeAmount: lottery.winningPrice.toString(),

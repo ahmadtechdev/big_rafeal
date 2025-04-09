@@ -210,6 +210,32 @@ class ApiService {
     }
   }
 
+  // Add this to api_service.dart
+  Future<bool> checkUserExists(int userId) async {
+    try {
+      final response = await _dio.get('$_baseUrl/users');
+
+      if (response.statusCode == 200) {
+        List<dynamic> users = response.data['user'];
+        return users.any((user) => user['id'] == userId);
+      } else {
+        throw 'Failed to check user existence with status: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw 'Failed to check user existence with status: ${e.response!.statusCode}';
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw 'Connection timed out. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        throw 'Something went wrong. Please try again later.';
+      }
+    } catch (e) {
+      throw 'Failed to check user existence: $e';
+    }
+  }
+
 
 
   Future<List<UserLottery>> fetchUserLotteries(int userId) async {

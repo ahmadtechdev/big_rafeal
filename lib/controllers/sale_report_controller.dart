@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 
 import '../api_service/api_service.dart';
 import '../controllers/lottery_controller.dart';

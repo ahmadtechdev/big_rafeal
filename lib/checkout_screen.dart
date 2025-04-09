@@ -509,7 +509,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final List<int> numbers = widget.selectedNumbers[i];
         final String ticketId = "BIGR${generateUniqueTicketId()}";
         ticketIds.add(ticketId);
-        final String product = '$lotteryNumbers x $lotteryName';
 
         // Format selected numbers for API
         final String selectedNumbersStr = numbers.join(',');

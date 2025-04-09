@@ -11,10 +11,7 @@ import 'package:printing/printing.dart';
 import '../controllers/user_controller.dart';
 import '../models/user_lottery_modal.dart';
 import '../utils/app_colors.dart';
-import 'api_service/api_service.dart';
-import 'controllers/lottery_controller.dart';
 import 'controllers/sale_report_controller.dart';
-import 'models/lottery_model.dart';
 
 class SalesReportScreen extends StatelessWidget {
   final SalesReportController _reportController = Get.put(
@@ -296,103 +293,12 @@ class SalesReportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCard(
-    String title,
-    String value,
-    Color valueColor,
-    IconData icon,
-  ) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0.8, end: 1.0),
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      builder: (context, scale, child) {
-        return Transform.scale(scale: scale, child: child);
-      },
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: AppColors.primaryColor.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        child: SingleChildScrollView(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white,
-                  AppColors.inputFieldBackground.withOpacity(0.3),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        icon,
-                        size: 16,
-                        color: AppColors.primaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textGrey,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TweenAnimationBuilder<double>(
-                  tween: Tween<double>(
-                    begin: 0.0,
-                    end: double.tryParse(value) ?? 0,
-                  ),
-                  duration: const Duration(milliseconds: 800),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, child) {
-                    return Text(
-                      'AED ${value.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: valueColor,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSaleItem(UserLottery userLottery, int index) {
     // Find corresponding lottery by properly matching IDs
     final lottery = _reportController.findMatchingLottery(userLottery);
+
+
     // Calculate winning amount
     double winningAmount = 0;
     bool resultsAvailable = false;
@@ -667,208 +573,252 @@ class SalesReportScreen extends StatelessWidget {
     );
   }
 
-  Future<Uint8List> _generatePdf(PdfPageFormat format) async {
-    final pdf = pw.Document();
-
-    // Load company logo from assets
-    final logo = await rootBundle.load('assets/logo2.png');
-    final logoImage = pw.MemoryImage(logo.buffer.asUint8List());
-
-    pdf.addPage(
-      pw.Page(
-        pageFormat: format,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.center,
-            children: [
-              // Header with large logo
-              pw.Container(
-                alignment: pw.Alignment.center,
-                margin: const pw.EdgeInsets.only(bottom: 10),
-                child: pw.Image(logoImage, width: 150, height: 80),
-              ),
-
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.black, width: 1),
-                ),
-                padding: const pw.EdgeInsets.all(8),
-                child: pw.Text(
-                  'SALES REPORT',
-                  style: pw.TextStyle(
-                    fontSize: 18,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.black,
-                  ),
-                  textAlign: pw.TextAlign.center,
-                ),
-              ),
-
-              pw.SizedBox(height: 5),
-              pw.Text(
-                '${_formatDate(_reportController.startDate.value)} to ${_formatDate(_reportController.endDate.value)}',
-                style: const pw.TextStyle(fontSize: 12),
-                textAlign: pw.TextAlign.center,
-              ),
-
-              pw.Divider(thickness: 2, color: PdfColors.black),
-              pw.SizedBox(height: 10),
-
-              // Summary section with improved styling
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  color: PdfColors.blue50,
-                  borderRadius: const pw.BorderRadius.all(
-                    pw.Radius.circular(5),
-                  ),
-                ),
-                padding: const pw.EdgeInsets.all(8),
-                child: pw.Text(
-                  'SUMMARY',
-                  style: pw.TextStyle(
-                    fontSize: 14,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-              ),
-              pw.SizedBox(height: 10),
-
-              // Summary items with better layout
-              pw.Table(
-                border: pw.TableBorder.all(color: PdfColors.grey300),
-                children: [
-                  _buildPdfSummaryRow(
-                    'Total Tickets:',
-                    '${_reportController.filteredLotteries.length}',
-                  ),
-                  _buildPdfSummaryRow(
-                    'Winning Tickets:',
-                    '${_reportController.filteredLotteries.where((l) {
-                      final lottery = _reportController.findMatchingLottery(l);
-                      return _reportController.calculateWinningAmount(l, lottery) > 0;
-                    }).length}',
-                  ),
-                  _buildPdfSummaryRow(
-                    'Total Sales:',
-                    'AED ${_reportController.totalSales.value.toStringAsFixed(2)}',
-                  ),
-                  _buildPdfSummaryRow(
-                    'Total Winnings:',
-                    'AED ${_reportController.totalWinnings.value.toStringAsFixed(2)}',
-                  ),
-                  _buildPdfSummaryRow(
-                    'Net Sales:',
-                    'AED ${(_reportController.totalSales.value - _reportController.totalWinnings.value).toStringAsFixed(2)}',
-                  ),
-                  _buildPdfSummaryRow(
-                    'Agent Commission (25%):',
-                    'AED ${_reportController.userCommission.value.toStringAsFixed(2)}',
-                  ),
-                  _buildPdfSummaryRow(
-                    'Payable to Admin:',
-                    'AED ${_reportController.payableToAdmin.value.toStringAsFixed(2)}',
-                  ),
-                ],
-              ),
-
-              pw.SizedBox(height: 15),
-
-
-              // Footer with company details
-              pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border(
-                    top: pw.BorderSide(color: PdfColors.black, width: 1),
-                  ),
-                ),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Text(
-                'BIG RAFEAL L.L.C',
-                style: pw.TextStyle(
-                  fontSize: 12,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
-              pw.Text(
-                'Agent Commission Percentage: 25%',
-                style: pw.TextStyle(fontSize: 10),
-              ),
-              pw.Text(
-                'For more information, visit www.bigrafeal.info',
-                style: pw.TextStyle(fontSize: 10),
-              ),
-              pw.Text(
-                'Email: info@bigrafeal.info',
-                style: pw.TextStyle(fontSize: 10),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Text(
-                'Printed on: ${DateFormat('MMM dd, yyyy hh:mm a').format(DateTime.now())}',
-                style: const pw.TextStyle(fontSize: 10),
-              ),
-              pw.SizedBox(height: 10),
-              pw.Text(
-                '---- Thank You For Your Business ----',
-                style: pw.TextStyle(
-                  fontSize: 12,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.black,
-                ),
-                textAlign: pw.TextAlign.center,
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    return pdf.save();
-  }
-
-  // Helper method for PDF summary rows with improved styling
-  pw.TableRow _buildPdfSummaryRow(String label, String value) {
-    return pw.TableRow(
-      children: [
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-          child: pw.Text(
-            label,
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-          ),
-        ),
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 10),
-          child: pw.Text(
-            value,
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-            textAlign: pw.TextAlign.right,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Print function
-  Future<void> _printReport() async {
+  // Load company logo image
+  Future<Uint8List?> _loadCompanyLogo() async {
     try {
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) => _generatePdf(format),
-          name: 'BIG_RAFEAL_Tickets_sale.pdf',
-          format: PdfPageFormat.roll80
-      );
+      final ByteData data = await rootBundle.load('assets/logo2.png');
+      return data.buffer.asUint8List();
     } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to print: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      print('Error loading company logo: $e');
+      return null;
     }
   }
 
+  Future<void> _printReport() async {
+
+    try {
+      // Generate common data
+      // Get user details
+      final userController = Get.put(UserController());
+      final userName = userController.currentUser.value?.name ?? 'Merchant';
+      final shopName = userController.currentUser.value?.shopName ?? 'Shop';
+
+      // Load logos
+      final Uint8List? companyLogoData = await _loadCompanyLogo();
+
+      // Create a single PDF document for all receipts
+      final pdf = pw.Document();
+
+
+        // Add receipt page to the document
+        pdf.addPage(
+          pw.Page(
+              pageFormat: PdfPageFormat.roll80,
+              build: (pw.Context context) {
+                return pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.SizedBox(height: 30),
+                    // Header with logo - increased size
+                    companyLogoData != null
+                        ? pw.Image(pw.MemoryImage(companyLogoData), width: 100, height: 50)
+                        : pw.Text('BIG RAFEAL',
+                        style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 4),
+
+                    // SALES REPORT (smaller font)
+                    pw.Text(
+                      'SALES REPORT',
+                      style: pw.TextStyle(
+                        fontSize: 14, // Reduced from 16
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+
+                    pw.SizedBox(height: 3),
+
+                    // Date range (smaller font)
+                    pw.Text(
+                      '${_formatDate(_reportController.startDate.value)} to ${_formatDate(_reportController.endDate.value)}',
+                      style: const pw.TextStyle(fontSize: 10), // Reduced from 12
+                      textAlign: pw.TextAlign.center,
+                    ),
+
+                    pw.Divider(thickness: 1),
+
+                    // Thinner divide
+
+                    pw.Text(
+                      'SUMMARY',
+                      style: pw.TextStyle(
+                        fontSize: 12, // Reduced from 14
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Total Tickets:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text("${_reportController.filteredLotteries.length}",
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Winning Tickets:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text('${_reportController.filteredLotteries.where((l) {
+                          final lottery = _reportController.findMatchingLottery(l);
+                          return _reportController.calculateWinningAmount(l, lottery) > 0;
+                        }).length}',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Total Sales:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text("AED ${_reportController.totalSales.value.toStringAsFixed(2)}",
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Total Winnings:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text("AED ${_reportController.totalWinnings.value.toStringAsFixed(2)}",
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Net Sales:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text("AED ${(_reportController.totalSales.value - _reportController.totalWinnings.value).toStringAsFixed(2)}",
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+
+                  pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Agent Commission (25%):',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text("AED ${_reportController.userCommission.value.toStringAsFixed(2)}",
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Payable to Admin:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text("AED ${_reportController.payableToAdmin.value.toStringAsFixed(2)}",
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+
+                    // Product details
+                    pw.SizedBox(height: 7),
+                    pw.Text(
+                      'MERCHANT DETAILS',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.SizedBox(height: 3),
+
+                    // Ticket details - improved with bolder text
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Merchant Name:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Text(userName,
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Shop Name:',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                        pw.Flexible(
+                          child: pw.Text(shopName,
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+                            textAlign: pw.TextAlign.right,
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.end,
+                      children: [
+                        pw.Text(shopName,
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 3),
+                    // Divider and jackpot info
+                    pw.Divider(thickness: 1),
+
+                    // Footer with company details
+                    pw.Text('BIG RAFEAL L.L.C',
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('Agent Commission: 25%',
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                    pw.Text('For more information,',
+                        style: pw.TextStyle(fontSize: 8)),
+                    pw.Text('visit www.bigrafeal.info',
+                        style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                    // pw.Text('or Call us @ 0554691351',
+                    //     style: pw.TextStyle(fontSize: 8)),
+                    pw.Text('info@bigrafeal.info',
+                        style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 6),
+                    pw.Text('---- Thank You ----',
+                        style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+
+                    // Add cut line between receipts if not the last receipt
+                   pw.Column(
+                      children: [
+                        pw.SizedBox(height: 10),
+                        pw.Text('--------------------------------',
+                            style: pw.TextStyle(fontSize: 8)),
+                        pw.SizedBox(height: 10),
+                      ],
+                    )
+                  ],
+                );
+              }
+          ),
+        );
+
+
+      // Print entire document once
+      await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdf.save(),
+          name: 'BIG_RAFEAL_Tickets_sale.pdf',
+          format: PdfPageFormat.roll80
+      );
+
+
+
+      Get.back();
+
+    } catch (e) {
+      // _showSnackBar('Error printing receipts: $e');
+      print('Printing error: $e');
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
+
+    // Get user details
+    final userController = Get.find<UserController>();
+    final userName = userController.currentUser.value?.name ?? 'Merchant';
+    final shopName = userController.currentUser.value?.shopName ?? 'Shop';
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
@@ -1018,6 +968,68 @@ class SalesReportScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  Card(
+                    elevation: 3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primaryColor.withOpacity(0.1),
+                            AppColors.inputFieldBackground.withOpacity(0.3),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.person_outline,
+                                size: 24,
+                                color: AppColors.primaryColor,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Merchant Details',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.textDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Name: $userName',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Shop: $shopName',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
                   // Summary section
                   Padding(

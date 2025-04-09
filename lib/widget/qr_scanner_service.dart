@@ -5,9 +5,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:get/get.dart';
 
 import '../controllers/lottery_controller.dart';
+import '../controllers/lottery_result_controller.dart';
 import '../models/lottery_model.dart';
 import '../utils/app_colors.dart';
 
@@ -125,6 +125,9 @@ class QRScannerService {
 
   void processQRCode(BuildContext context, String qrData) async {
     try {
+
+      final resultController = LotteryResultController.instance;
+
       // Parse the JSON data from QR code
       final Map<String, dynamic> qrDataMap = jsonDecode(qrData);
 

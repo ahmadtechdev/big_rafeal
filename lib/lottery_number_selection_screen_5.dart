@@ -1,10 +1,7 @@
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
 import 'package:lottery_app/widget/qr_scanner_service.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 import 'dart:async';
 import 'controllers/lottery_controller.dart';
 import 'utils/app_colors.dart';
@@ -50,7 +47,6 @@ class _LotteryNumberSelectionScreenState
   int activeRowIndex = 0;
 
   late AnimationController _animationController;
-  late Animation<double> _animation;
 
   @override
   @override
@@ -75,10 +71,6 @@ class _LotteryNumberSelectionScreenState
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _animation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    );
   }
 
   void _updateTimeLeft() {
@@ -102,35 +94,6 @@ class _LotteryNumberSelectionScreenState
     super.dispose();
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (seconds > 0) {
-          seconds--;
-        } else {
-          if (minutes > 0) {
-            minutes--;
-            seconds = 59;
-          } else {
-            if (hours > 0) {
-              hours--;
-              minutes = 59;
-              seconds = 59;
-            } else {
-              if (days > 0) {
-                days--;
-                hours = 23;
-                minutes = 59;
-                seconds = 59;
-              } else {
-                timer.cancel();
-              }
-            }
-          }
-        }
-      });
-    });
-  }
 
   void _selectNumber(int number) {
     setState(() {
@@ -149,13 +112,6 @@ class _LotteryNumberSelectionScreenState
     });
   }
 
-  void _clearAllSelections() {
-    setState(() {
-      for (int i = 0; i < selectedNumbersRows.length; i++) {
-        selectedNumbersRows[i] = [];
-      }
-    });
-  }
 
   void _quickPick() {
     setState(() {
