@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottery_app/sale_report.dart';
+import 'package:lottery_app/widget/banner_carousel.dart';
 import 'package:lottery_app/widget/qr_scanner_service.dart';
+import 'package:lottery_app/widget/winning_prize_details_dropdown.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'api_service/api_service.dart';
 import 'controllers/user_controller.dart';
 import 'login_screen_2.dart';
 import 'lottery_sale.dart';
+import 'models/lottery_model.dart';
 import 'utils/app_colors.dart';
 import 'lottery_cards_screen_4.dart';
 import '../controllers/lottery_controller.dart';
@@ -91,7 +94,8 @@ class LotteryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: () => lotteryController.refreshLotteries(),
+                        onPressed: () => Get.to(() => LotteryHistoryScreen()),
+
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryColor,
                           shape: RoundedRectangleBorder(
@@ -112,7 +116,7 @@ class LotteryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: () => Get.to(()=>LotteryHistoryScreen()),
+                        onPressed: () => lotteryController.refreshLotteries(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryColor,
                           shape: RoundedRectangleBorder(
@@ -137,8 +141,9 @@ class LotteryScreen extends StatelessWidget {
               }
 
               // Add this check before the SingleChildScrollView
-              if (lotteryController.lotteries
-                  .every((lottery) => _isLotteryExpired(lottery.endDate))) {
+              if (lotteryController.lotteries.every(
+                (lottery) => _isLotteryExpired(lottery.endDate),
+              )) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -207,11 +212,13 @@ class LotteryScreen extends StatelessWidget {
 
                     // Lottery sections based on numberLottery groups
                     // Replace the lottery sections loop with this:
-                    for (var lottery in lotteryController.lotteries.where((lottery) => !_isLotteryExpired(lottery.endDate)))
+                    for (var lottery in lotteryController.lotteries.where(
+                      (lottery) => !_isLotteryExpired(lottery.endDate),
+                    ))
                       _buildLotterySection(
                         context,
                         lottery.lotteryName,
-                        lottery.winningPrice.toString(),
+                        lottery,
                         lottery.numberLottery,
                         generateSequentialNumbers(lottery.numberLottery),
                       ),
@@ -341,7 +348,9 @@ class LotteryScreen extends StatelessWidget {
                           'Logged Out',
                           'You have been successfully logged out',
                           snackPosition: SnackPosition.BOTTOM,
-                          backgroundColor: AppColors.primaryColor.withOpacity(0.8),
+                          backgroundColor: AppColors.primaryColor.withOpacity(
+                            0.8,
+                          ),
                           colorText: Colors.white,
                           duration: const Duration(seconds: 2),
                         );
@@ -350,12 +359,12 @@ class LotteryScreen extends StatelessWidget {
                         Get.offAll(() => LoginScreen());
                       },
                     );
-                  }else if(value =='report'){
+                  } else if (value == 'report') {
                     navigate();
                   }
                 },
                 itemBuilder: (BuildContext context) {
-                  return { 'Report','Logout'}.map((String choice) {
+                  return {'Report', 'Logout'}.map((String choice) {
                     return PopupMenuItem<String>(
                       value: choice.toLowerCase().replaceAll(' ', ''),
                       child: Text(choice),
@@ -369,16 +378,37 @@ class LotteryScreen extends StatelessWidget {
       ),
     );
   }
-  void navigate (){
-    Get.to(()=> SalesReportScreen());
+
+  void navigate() {
+    Get.to(() => SalesReportScreen());
   }
 
   Widget _buildBanner(BuildContext context) {
-    // Get the total number of lotteries
-    // Replace the totalLotteries line with:
+    // Get the total number of active lotteries
     int totalLotteries = lotteryController.lotteries
         .where((lottery) => !_isLotteryExpired(lottery.endDate))
         .length;
+
+    // Find the first active lottery or use a default value if none exist
+    final activeLottery = lotteryController.lotteries.firstWhere(
+          (lottery) => !_isLotteryExpired(lottery.endDate),
+      orElse: () => Lottery(
+        id: 0,
+        lotteryId: '',
+        numberLottery: 0,
+        digits: '',
+        startDate: '',
+        endDate: '',
+        winningNumber: '',
+        createdAt: '',
+        updatedAt: '',
+        lotteryName: 'No Active Lottery',
+        purchasePrice: '0',
+        lotteryCode: '',
+        image: '',
+        lotteryCategory: '',
+      ),
+    );
 
     return Container(
       width: double.infinity,
@@ -403,115 +433,14 @@ class LotteryScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Prize showcase
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-            child: Row(
-              children: [
-                // Prize info
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Today\'s Jackpot',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'AED',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            lotteryController.lotteries[0].winningPrice
-                                .toString(),
-                            style: TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  blurRadius: 10.0,
-                                  color: Colors.black.withOpacity(0.2),
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$totalLotteries Active Lotteries',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Winner illustration or placeholder
-                Expanded(
-                  flex: 2,
-                  child: TweenAnimationBuilder(
-                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                    duration: const Duration(seconds: 1),
-                    builder: (context, double value, child) {
-                      return Opacity(
-                        opacity: value,
-                        child: Transform.scale(
-                          scale: 0.8 + (0.2 * value),
-                          child: Container(
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.emoji_events,
-                                size: 50,
-                                color: Colors.amber[300],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+          // Banner carousel
+          BannerCarousel(
+            lotteryController: lotteryController,
+            totalLotteries: totalLotteries,
+            activeLottery: activeLottery,
           ),
 
           // Timer countdown
-          // Replace the timer countdown section in _buildBanner with:
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 12),
@@ -522,15 +451,12 @@ class LotteryScreen extends StatelessWidget {
                 bottomRight: Radius.circular(16),
               ),
             ),
-            child: Center(
-              child: _buildNextDrawTimer(),
-            ),
+            child: Center(child: _buildNextDrawTimer()),
           ),
         ],
       ),
     );
   }
-
   Widget _buildActionButtons(BuildContext context) {
     final UserController userController = Get.put(UserController());
 
@@ -561,7 +487,9 @@ class LotteryScreen extends StatelessWidget {
                 );
 
                 // Check if user exists
-                final userExists = await ApiService().checkUserExists(userController.currentUser.value!.id);
+                final userExists = await ApiService().checkUserExists(
+                  userController.currentUser.value!.id,
+                );
 
                 Get.back(); // Dismiss loading indicator
 
@@ -579,7 +507,7 @@ class LotteryScreen extends StatelessWidget {
                 } else {
                   // Proceed to play
                   Get.to(
-                        () => LotteryCardsScreen(),
+                    () => LotteryCardsScreen(),
                     transition: Transition.rightToLeft,
                   );
                 }
@@ -623,7 +551,10 @@ class LotteryScreen extends StatelessWidget {
           // Prize Details button
           GestureDetector(
             onTap: () {
-              Get.to(() => LotteryHistoryScreen(), transition: Transition.rightToLeft);
+              Get.to(
+                () => LotteryHistoryScreen(),
+                transition: Transition.rightToLeft,
+              );
             },
             child: Container(
               height: 50,
@@ -656,12 +587,38 @@ class LotteryScreen extends StatelessWidget {
   }
 
   Widget _buildLotterySection(
-    BuildContext context,
-    String title,
-    String amount,
-    int circleCount,
-    List<String> numbers,
-  ) {
+      BuildContext context,
+      String title,
+      Lottery lottery,
+      int circleCount,
+      List<String> numbers,
+      ) {
+    // Convert lottery category code to readable text
+    String categoryText;
+    Color categoryColor;
+
+    switch(lottery.lotteryCategory) {
+      case "0":
+        categoryText = "Sequence";
+        categoryColor = Colors.blue;
+        break;
+      case "1":
+        categoryText = "Rumble";
+        categoryColor = Colors.orange;
+        break;
+      case "2":
+        categoryText = "Chance";
+        categoryColor = Colors.green;
+        break;
+      case "3":
+        categoryText = "All Types";
+        categoryColor = Colors.purple;
+        break;
+      default:
+        categoryText = "Unknown";
+        categoryColor = Colors.grey;
+    }
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
@@ -691,13 +648,39 @@ class LotteryScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Add category badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: categoryColor.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: categoryColor,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        categoryText,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: categoryColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 Row(
                   children: [
@@ -711,7 +694,7 @@ class LotteryScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      amount,
+                      lottery.highestPrize.toStringAsFixed(2),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -730,13 +713,38 @@ class LotteryScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Your Numbers:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Your Numbers:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    // Price tag
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.primaryColor.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        'Price: AED ${lottery.purchasePrice}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -744,7 +752,7 @@ class LotteryScreen extends StatelessWidget {
                   runSpacing: 8,
                   children: List.generate(
                     circleCount,
-                    (index) => TweenAnimationBuilder(
+                        (index) => TweenAnimationBuilder(
                       tween: Tween<double>(begin: 0.5, end: 1.0),
                       duration: Duration(milliseconds: 300 + (index * 100)),
                       curve: Curves.easeOutBack,
@@ -796,7 +804,9 @@ class LotteryScreen extends StatelessWidget {
             ),
           ),
 
-          // Play button
+          // Prize Details Expansion Section
+          PrizeDetailsExpansion(lottery: lottery),
+
           // Play button
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -822,7 +832,9 @@ class LotteryScreen extends StatelessWidget {
                   );
 
                   // Check if user exists
-                  final userExists = await ApiService().checkUserExists(userController.currentUser.value!.id);
+                  final userExists = await ApiService().checkUserExists(
+                    userController.currentUser.value!.id,
+                  );
 
                   Get.back(); // Dismiss loading indicator
 
@@ -892,12 +904,12 @@ class LotteryScreen extends StatelessWidget {
   Widget _buildNextDrawTimer() {
     return NextDrawTimer(lotteryController: lotteryController);
   }
+
   // Add this helper method to generate sequential numbers
   List<String> generateSequentialNumbers(int count) {
     return List.generate(count, (index) => (index + 1).toString());
   }
 }
-
 
 class NextDrawTimer extends StatefulWidget {
   final LotteryController lotteryController;
@@ -932,9 +944,10 @@ class _NextDrawTimerState extends State<NextDrawTimer> {
   }
 
   void _updateTimeLeft() {
-    final upcomingLotteries = widget.lotteryController.lotteries
-        .where((lottery) => !_isLotteryExpired(lottery.endDate))
-        .toList();
+    final upcomingLotteries =
+        widget.lotteryController.lotteries
+            .where((lottery) => !_isLotteryExpired(lottery.endDate))
+            .toList();
 
     if (upcomingLotteries.isEmpty) {
       _timeLeft = Duration.zero;
@@ -984,5 +997,4 @@ class _NextDrawTimerState extends State<NextDrawTimer> {
       ),
     );
   }
-
 }

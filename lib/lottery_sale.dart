@@ -8,7 +8,7 @@ import 'api_service/api_service.dart';
 import 'models/user_lottery_modal.dart';
 
 class LotteryHistoryScreen extends StatefulWidget {
-  const LotteryHistoryScreen({Key? key}) : super(key: key);
+  const LotteryHistoryScreen({super.key});
 
   @override
   State<LotteryHistoryScreen> createState() => _LotteryHistoryScreenState();

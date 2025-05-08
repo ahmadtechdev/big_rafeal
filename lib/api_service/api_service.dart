@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'dart:convert';
+import '../models/banner_model.dart';
 import '../models/lottery_model.dart';
 import '../models/user_lottery_modal.dart';
 
@@ -134,6 +135,32 @@ class ApiService {
     }
   }
 
+  // Add this method to your ApiService class
+  Future<List<BannerModal>> fetchBanners() async {
+    try {
+      final response = await _dio.get('$_baseUrl/banners');
+
+      if (response.statusCode == 200) {
+        List<dynamic> bannerData = response.data['banners'];
+        return bannerData.map((json) => BannerModal.fromJson(json)).toList();
+      } else {
+        throw 'Failed to load banners with status: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      // Handle Dio specific errors
+      if (e.response != null) {
+        throw 'Failed to load banners with status: ${e.response!.statusCode}';
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw 'Connection timed out. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        throw 'Something went wrong. Please try again later.';
+      }
+    } catch (e) {
+      throw 'Failed to load banners: $e';
+    }
+  }
 
   // Add to api_service.dart
   Future<Map<String, dynamic>> saveLotterySale({
@@ -174,7 +201,7 @@ class ApiService {
         "w_or_l": winOrLoss
       });
 
-      print('Sending data to API: $data'); // Debug log
+      // Debug log
 
       final response = await _dio.request(
         '$_baseUrl/add_lottery',
@@ -182,14 +209,14 @@ class ApiService {
         data: data,
       );
 
-      print('API Response: ${response.data}'); // Debug log
+      // Debug log
 
       return response.data;
     } on DioException catch (e) {
-      print('DioError: ${e.message}'); // Debug log
+      // Debug log
       if (e.response != null) {
-        print('Error response data: ${e.response?.data}'); // Debug log
-        print('Error status code: ${e.response?.statusCode}'); // Debug log
+        // Debug log
+        // Debug log
 
         if (e.response!.data is Map) {
           final errorMessage = e.response!.data['message'] ?? 'Sale saving failed';
@@ -205,7 +232,7 @@ class ApiService {
         throw 'Something went wrong. Please try again later.';
       }
     } catch (e) {
-      print('General Error: $e'); // Debug log
+      // Debug log
       throw 'Sale saving failed: $e';
     }
   }

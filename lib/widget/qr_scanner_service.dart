@@ -1,10 +1,13 @@
 // qr_scanner_service.dart
 import 'dart:convert';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../controllers/lottery_controller.dart';
 import '../controllers/lottery_result_controller.dart';
@@ -134,7 +137,6 @@ class QRScannerService {
 
       final int lotteryId = qrDataMap['l'];
       final String ticketId = qrDataMap['t'];
-      final int rowIndex = qrDataMap['r'];
 
       // Handle numbers conversion
       final String numbersString = qrDataMap['n'];
@@ -172,18 +174,20 @@ class QRScannerService {
         userNumber: '',
         lotteryName: lottery.lotteryName,
         purchasePrice: lottery.purchasePrice,
-        winningPrice: lottery.winningPrice,
         numberOfLottery: '1',
         lotteryIssueDate: purchaseDate.toString(),
         selectedNumbers: numbersString,
         wOrL: '',
         createdAt: '',
         updatedAt: '',
-        lotteryCode: lottery.lotteryCode,
+        lotteryCode: lottery.lotteryCode, winningPrice: '',
       );
 
       final result = resultController.checkLotteryResult(userLottery, lottery);
 
+      // Get winning numbers properly
+      final List<String> winningNumbersStr = lottery.winningNumber.split(',');
+      final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n.trim())).toList();
 
       showResultDialog(
         context,
@@ -191,6 +195,7 @@ class QRScannerService {
         lottery,
         selectedNumbers.length,
         selectedNumbers,
+        winningNumbers
       );
     } catch (e) {
       print('Error processing QR code: $e');
@@ -293,20 +298,59 @@ class QRScannerService {
     );
   }
 
+
+// Add these imports to your existing imports in qr_scanner_service.dart
+
+// Then update your showResultDialog method to include a print button:
+  // Updated showResultDialog method
+  // Updated showResultDialog to handle all match types clearly
   void showResultDialog(
       BuildContext context,
       LotteryResult result,
       Lottery lottery,
       int totalNumbers,
       List<int> selectedNumbers,
+      List<int> winningNumbers,
       ) {
     final bool isFullWin = result.resultType == ResultType.fullWin;
-    final bool hasPartialWin = result.resultType == ResultType.partialWin;
-    final bool hasSequenceWin = result.resultType == ResultType.sequenceWin;
+    final bool hasSequenceWin = result.isSequenceMatch;
+    final bool hasChanceWin = result.isChanceMatch;
+    final bool hasRumbleWin = result.isRumbleMatch;
 
-    // Get winning numbers
-    final List<String> winningNumbersStr = lottery.winningNumber.split(', ');
-    final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n)).toList();
+    // Determine the best title and message based on match types
+    String resultTitle;
+    Color resultColor;
+    String resultMessage;
+
+    if (isFullWin) {
+      resultTitle = 'JACKPOT WINNER!';
+      resultColor = Colors.green[600]!;
+      resultMessage = 'You matched all $totalNumbers numbers!\nYou won AED ${result.prizeAmount}!';
+    } else if (hasSequenceWin && hasRumbleWin) {
+      resultTitle = 'SEQUENCE & RUMBLE WIN!';
+      resultColor = Colors.blue[600]!;
+      resultMessage = 'You matched ${result.matchCount} sequence numbers!\nPlus ${result.matchCount} rumble matches!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+    } else if (hasChanceWin && hasRumbleWin) {
+      resultTitle = 'CHANCE & RUMBLE WIN!';
+      resultColor = Colors.purple[600]!;
+      resultMessage = 'You matched ${result.matchCount} chance numbers!\nPlus ${result.matchCount} rumble matches!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+    } else if (hasSequenceWin) {
+      resultTitle = 'SEQUENCE WIN!';
+      resultColor = Colors.blue[600]!;
+      resultMessage = 'You matched ${result.matchCount} sequence numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+    } else if (hasChanceWin) {
+      resultTitle = 'CHANCE WIN!';
+      resultColor = Colors.purple[600]!;
+      resultMessage = 'You matched ${result.matchCount} chance numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+    } else if (hasRumbleWin) {
+      resultTitle = 'RUMBLE WIN!';
+      resultColor = Colors.orange[600]!;
+      resultMessage = 'You matched ${result.matchCount} numbers in any order!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+    } else {
+      resultTitle = 'BETTER LUCK NEXT TIME!';
+      resultColor = Colors.red[600]!;
+      resultMessage = 'Try again for a chance to win big!';
+    }
 
     showDialog(
       context: context,
@@ -317,7 +361,7 @@ class QRScannerService {
           elevation: 0,
           backgroundColor: Colors.transparent,
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -329,162 +373,603 @@ class QRScannerService {
                 ),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  height: 150,
-                  width: 150,
-                  child: isFullWin
-                      ? _buildWinnerAnimation()
-                      : hasSequenceWin
-                      ? _buildSequenceWinAnimation()
-                      : hasPartialWin
-                      ? _buildPartialWinAnimation()
-                      : _buildTryAgainAnimation(),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  isFullWin
-                      ? 'JACKPOT WINNER!'
-                      : hasSequenceWin
-                      ? 'SEQUENCE WIN!'
-                      : hasPartialWin
-                      ? 'PARTIAL WIN!'
-                      : 'BETTER LUCK NEXT TIME!',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: isFullWin
-                        ? Colors.green[600]
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 100,
+                    width: 100,
+                    child: isFullWin
+                        ? _buildWinnerAnimation()
+                        : hasSequenceWin && hasRumbleWin
+                        ? _buildSequenceRumbleWinAnimation()
+                        : hasChanceWin && hasRumbleWin
+                        ? _buildChanceRumbleWinAnimation()
                         : hasSequenceWin
-                        ? Colors.blue[600]
-                        : hasPartialWin
-                        ? Colors.orange[600]
-                        : Colors.red[600],
+                        ? _buildSequenceWinAnimation()
+                        : hasChanceWin
+                        ? _buildChanceWinAnimation()
+                        : hasRumbleWin
+                        ? _buildRumbleWinAnimation()
+                        : _buildTryAgainAnimation(),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  isFullWin
-                      ? 'You matched all $totalNumbers numbers!\nYou won AED ${lottery.winningPrice}!'
-                      : hasSequenceWin
-                      ? 'You matched ${result.matchCount} sequence numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
-                      : hasPartialWin
-                      ? 'You matched ${result.matchCount} out of $totalNumbers numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
-                      : 'Try again for a chance to win big!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Column(
-                  children: [
-                    const Text(
-                      'Your Numbers:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: selectedNumbers.map((number) {
-                        final isMatched = winningNumbers.contains(number);
-                        return Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isMatched ? Colors.green[100] : Colors.red[100],
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isMatched ? Colors.green : Colors.red,
-                              width: 2,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              number.toString(),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: isMatched ? Colors.green[800] : Colors.red[800],
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Winning Numbers:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: winningNumbers.map((number) {
-                        return Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.blue[100],
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.blue,
-                              width: 2,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              number.toString(),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[800],
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: Text(
-                    isFullWin || hasSequenceWin || hasPartialWin ? 'CLAIM PRIZE' : 'TRY AGAIN',
-                    style: const TextStyle(
-                      color: Colors.white,
+                  const SizedBox(height: 16),
+                  Text(
+                    resultTitle,
+                    style: TextStyle(
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
+                      color: resultColor,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    resultMessage,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Column(
+                    children: [
+                      const Text(
+                        'Your Numbers:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: selectedNumbers.map((number) {
+                          final isMatched = winningNumbers.contains(number);
+                          return Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: isMatched ? Colors.green[100] : Colors.red[100],
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isMatched ? Colors.green : Colors.red,
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                number.toString(),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: isMatched ? Colors.green[800] : Colors.red[800],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Winning Numbers:',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: winningNumbers.map((number) {
+                          return Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.blue[100],
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.blue,
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                number.toString(),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue[800],
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () {
+                          _printResultReceipt(context, result, lottery, selectedNumbers, winningNumbers);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[800],
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.print, color: Colors.white, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'PRINT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        child: Text(
+                          isFullWin || hasSequenceWin || hasChanceWin || hasRumbleWin
+                              ? 'CLAIM PRIZE'
+                              : 'TRY AGAIN',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
       },
     );
   }
+
+// New animation for combined Sequence + Rumble win
+  Widget _buildSequenceRumbleWinAnimation() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1500),
+      builder: (context, value, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Rotating circle
+            Transform.rotate(
+              angle: value * 2 * 3.14159,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.blue.withOpacity(0.5),
+                    width: 8,
+                  ),
+                ),
+              ),
+            ),
+            // Sequence icon
+            Icon(
+              Icons.format_list_numbered,
+              size: 60,
+              color: Colors.blue[600],
+            ),
+            // Rumble icon
+            Transform.translate(
+              offset: const Offset(20, 20),
+              child: Icon(
+                Icons.casino,
+                size: 40,
+                color: Colors.orange[600],
+              ),
+            ),
+            // Sparkles
+            if (value > 0.5)
+              Positioned(
+                right: 20,
+                top: 20,
+                child: Icon(
+                  Icons.star,
+                  size: 30 * (value - 0.5) * 2,
+                  color: Colors.blue[300],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+// New animation for combined Chance + Rumble win
+  Widget _buildChanceRumbleWinAnimation() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1500),
+      builder: (context, value, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Rotating circle
+            Transform.rotate(
+              angle: value * 2 * 3.14159,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.purple.withOpacity(0.5),
+                    width: 8,
+                  ),
+                ),
+              ),
+            ),
+            // Chance icon
+            Icon(
+              Icons.compare_arrows,
+              size: 60,
+              color: Colors.purple[600],
+            ),
+            // Rumble icon
+            Transform.translate(
+              offset: const Offset(20, 20),
+              child: Icon(
+                Icons.casino,
+                size: 40,
+                color: Colors.orange[600],
+              ),
+            ),
+            // Sparkles
+            if (value > 0.5)
+              Positioned(
+                right: 20,
+                top: 20,
+                child: Icon(
+                  Icons.star,
+                  size: 30 * (value - 0.5) * 2,
+                  color: Colors.purple[300],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+// Add this new animation for chance wins
+  Widget _buildChanceWinAnimation() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1500),
+      builder: (context, value, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Rotating circle
+            Transform.rotate(
+              angle: value * 2 * 3.14159,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.purple.withOpacity(0.5),
+                    width: 8,
+                  ),
+                ),
+              ),
+            ),
+            // Reverse icon
+            Icon(
+              Icons.compare_arrows,
+              size: 80,
+              color: Colors.purple[600],
+            ),
+            // Sparkles
+            if (value > 0.5)
+              Positioned(
+                right: 20,
+                top: 20,
+                child: Icon(
+                  Icons.star,
+                  size: 30 * (value - 0.5) * 2,
+                  color: Colors.purple[300],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+// Update the partial win animation to rumble win
+  Widget _buildRumbleWinAnimation() {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1500),
+      builder: (context, value, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            // Rotating circle
+            Transform.rotate(
+              angle: value * 2 * 3.14159,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.orange.withOpacity(0.5),
+                    width: 8,
+                  ),
+                ),
+              ),
+            ),
+            // Dollar sign
+            Icon(
+              Icons.casino,
+              size: 80,
+              color: Colors.orange[600],
+            ),
+            // Sparkles
+            if (value > 0.5)
+              Positioned(
+                right: 20,
+                top: 20,
+                child: Icon(
+                  Icons.star,
+                  size: 30 * (value - 0.5) * 2,
+                  color: Colors.orange[300],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+// Update the _printResultReceipt method
+  Future<void> _printResultReceipt(
+      BuildContext context,
+      LotteryResult result,
+      Lottery lottery,
+      List<int> selectedNumbers,
+      List<int> winningNumbers,
+      ) async {
+    try {
+      // Show printing indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preparing receipt for printing...')),
+      );
+
+      // Create PDF document
+      final pdf = pw.Document();
+      final Uint8List? companyLogoData = await _loadCompanyLogo();
+
+      // Get current date time for receipt
+      final String currentDateTime = DateTime.now().toString().substring(0, 16);
+
+      // Format result information
+      final bool isFullWin = result.resultType == ResultType.fullWin;
+      final bool hasSequenceWin = result.resultType == ResultType.sequenceWin;
+      final bool hasChanceWin = result.resultType == ResultType.chanceWin;
+      final bool hasRumbleWin = result.resultType == ResultType.rumbleWin;
+
+      final String resultStatus = isFullWin
+          ? 'JACKPOT WINNER!'
+          : hasSequenceWin
+          ? 'SEQUENCE WIN!'
+          : hasChanceWin
+          ? 'CHANCE WIN!'
+          : hasRumbleWin
+          ? 'RUMBLE WIN!'
+          : 'NO WIN';
+
+      final String resultDetails = isFullWin
+          ? 'You matched all ${selectedNumbers.length} numbers!\nYou won AED ${result.prizeAmount}!'
+          : hasSequenceWin
+          ? 'You matched ${result.matchCount} sequence numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
+          : hasChanceWin
+          ? 'You matched ${result.matchCount} chance numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
+          : hasRumbleWin
+          ? 'You matched ${result.matchCount} numbers in any order!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
+          : 'Better luck next time!';
+
+      // Add receipt page to the document
+      pdf.addPage(
+        pw.Page(
+            pageFormat: PdfPageFormat.roll80,
+            build: (pw.Context context) {
+              return pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.SizedBox(height: 30),
+                  // Header with logo - increased size
+                  companyLogoData != null
+                      ? pw.Image(pw.MemoryImage(companyLogoData), width: 100, height: 50)
+                      : pw.Text('BIG RAFEAL',
+                      style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 4),
+                  pw.Text('LOTTERY RESULT',
+                      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 6),
+                  pw.Text(lottery.lotteryName,
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 4),
+                  pw.Text('GRAND JACKPOT ${lottery.highestPrize} AED',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.Divider(thickness: 1),
+
+                  // Result status
+                  pw.SizedBox(height: 12),
+                  pw.Text(resultStatus,
+                      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+                  pw.Text(resultDetails,
+                      style: pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center),
+                  pw.SizedBox(height: 12),
+
+                  // Your Numbers section
+                  pw.Text('YOUR NUMBERS:',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 6),
+                  pw.Container(
+                    alignment: pw.Alignment.center,
+                    child: pw.Wrap(
+                      alignment: pw.WrapAlignment.center,
+                      spacing: 8,
+                      children: selectedNumbers.map((number) {
+                        final isMatched = winningNumbers.contains(number);
+                        return pw.Container(
+                          width: 18,
+                          height: 18,
+                          decoration: pw.BoxDecoration(
+                            shape: pw.BoxShape.circle,
+                            border: pw.Border.all(width: 1),
+                          ),
+                          alignment: pw.Alignment.center,
+                          child: pw.Text(
+                            number.toString(),
+                            style: pw.TextStyle(
+                                fontSize: 10,
+                                fontWeight: isMatched ? pw.FontWeight.bold : null
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  // Winning Numbers section
+                  pw.SizedBox(height: 12),
+                  pw.Text('WINNING NUMBERS:',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 6),
+                  pw.Container(
+                    alignment: pw.Alignment.center,
+                    child: pw.Wrap(
+                      alignment: pw.WrapAlignment.center,
+                      spacing: 8,
+                      children: winningNumbers.map((number) {
+                        return pw.Container(
+                          width: 18,
+                          height: 18,
+                          decoration: pw.BoxDecoration(
+                            shape: pw.BoxShape.circle,
+                            border: pw.Border.all(width: 1),
+                          ),
+                          alignment: pw.Alignment.center,
+                          child: pw.Text(
+                            number.toString(),
+                            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+
+                  pw.SizedBox(height: 12),
+                  // Match details
+                  (isFullWin || hasSequenceWin || hasChanceWin || hasRumbleWin) ? pw.Column(
+                      children: [
+                        pw.Text('PRIZE DETAILS',
+                            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          isFullWin
+                              ? 'Full Match - AED ${result.prizeAmount}'
+                              : hasSequenceWin
+                              ? 'Sequence Match - AED ${result.prizeAmount.toStringAsFixed(2)}'
+                              : hasChanceWin
+                              ? 'Chance Match - AED ${result.prizeAmount.toStringAsFixed(2)}'
+                              : 'Rumble Match - AED ${result.prizeAmount.toStringAsFixed(2)}',
+                          style: pw.TextStyle(fontSize: 9),
+                        ),
+                        pw.Text('Matched Numbers: ${result.matchCount}',
+                            style: pw.TextStyle(fontSize: 9)),
+                      ]
+                  ) : pw.SizedBox(),
+
+                  pw.Divider(thickness: 1),
+                  // Footer
+                  pw.Text('Date: $currentDateTime',
+                      style: pw.TextStyle(fontSize: 8)),
+                  pw.SizedBox(height: 4),
+                  pw.Text('BIG RAFEAL L.L.C',
+                      style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('www.bigrafeal.info',
+                      style: pw.TextStyle(fontSize: 8)),
+                  pw.Text('info@bigrafeal.info',
+                      style: pw.TextStyle(fontSize: 8)),
+                  pw.SizedBox(height: 6),
+                  pw.Text('---- Thank You ----',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 20),
+                ],
+              );
+            }
+        ),
+      );
+
+      // Print the PDF
+      await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdf.save(),
+          name: 'BIG_RAFEAL_Result.pdf',
+          format: PdfPageFormat.roll80
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Receipt printed successfully')),
+      );
+    } catch (e) {
+      print('Error printing result receipt: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error printing receipt: $e')),
+      );
+    }
+  }
+
+  Future<Uint8List?> _loadCompanyLogo() async {
+    try {
+      final ByteData data = await rootBundle.load('assets/logo2.png');
+      return data.buffer.asUint8List();
+    } catch (e) {
+      print('Error loading company logo: $e');
+      return null;
+    }
+  }
+
 
 // Add this new animation for sequence wins
   Widget _buildSequenceWinAnimation() {
@@ -532,52 +1017,7 @@ class QRScannerService {
       },
     );
   }
-// Add this new animation for partial wins
-  Widget _buildPartialWinAnimation() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1500),
-      builder: (context, value, child) {
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // Rotating circle
-            Transform.rotate(
-              angle: value * 2 * 3.14159,
-              child: Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.orange.withOpacity(0.5),
-                    width: 8,
-                  ),
-                ),
-              ),
-            ),
-            // Dollar sign
-            Icon(
-              Icons.attach_money,
-              size: 80,
-              color: Colors.orange[600],
-            ),
-            // Sparkles
-            if (value > 0.5)
-              Positioned(
-                right: 20,
-                top: 20,
-                child: Icon(
-                  Icons.star,
-                  size: 30 * (value - 0.5) * 2,
-                  color: Colors.orange[300],
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
+
   // Simple winner animation using built-in Flutter animations
   Widget _buildWinnerAnimation() {
     return TweenAnimationBuilder(

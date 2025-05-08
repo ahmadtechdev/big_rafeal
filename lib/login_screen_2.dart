@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'api_service/api_service.dart';
 import 'controllers/user_controller.dart';
+import 'dashboard.dart';
 import 'utils/app_colors.dart';
-import 'lottery_screen_3.dart';
 
 // controllers/login_controller.dart
 import '../models/user_model.dart';
@@ -102,7 +102,7 @@ class LoginController extends GetxController {
 
         // Navigate to the lottery screen after a short delay to show the success message
         Future.delayed(const Duration(milliseconds: 500), () {
-          Get.offAll(() => LotteryScreen(), transition: Transition.fadeIn);
+          Get.offAll(() => AnimatedHomeScreen(), transition: Transition.fadeIn);
         });
       } else {
         // Handle unsuccessful login

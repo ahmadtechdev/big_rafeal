@@ -57,18 +57,42 @@ class LotteryCardsScreen extends StatelessWidget {
             physics: const BouncingScrollPhysics(),
             itemCount: lotteryController.lotteries.length,
             itemBuilder: (context, index) {
-              final sortedLotteries = _getSortedLotteries(lotteryController.lotteries);
-              final lottery = sortedLotteries[index];
-              return _buildLotteryCard(
-                context: context,
-                lotteryId: lottery.id,
-                title: lottery.lotteryName,
-                price: double.parse(lottery.purchasePrice.toString()),
-                drawDate: lottery.endDate,
-                prizeAmount: lottery.winningPrice.toString(),
-                circleCount: lottery.numberLottery,
-                maxNumbers: int.parse(lottery.digits),
-              );
+              try {
+                final sortedLotteries = _getSortedLotteries(lotteryController.lotteries);
+                final lottery = sortedLotteries[index];
+
+                // Add null checks and default values for everything
+                return _buildLotteryCard(
+                  context: context,
+                  lotteryId: lottery.id,
+                  title: lottery.lotteryName.isNotEmpty ? lottery.lotteryName : 'Lottery',
+                  price: double.tryParse(lottery.purchasePrice.toString()) ?? 0.0,
+                  drawDate: lottery.endDate.isNotEmpty ? lottery.endDate : 'TBD',
+                  prizeAmount: lottery.highestPrize.toString(),
+                  circleCount: lottery.numberLottery > 0 ? lottery.numberLottery : 1,
+                  maxNumbers: int.tryParse(lottery.digits) ?? 9,
+                  image: lottery.image,
+                  lotteryCategory: lottery.lotteryCategory,
+                  announcedResult: lottery.announcedResult,
+                );
+              } catch (e) {
+                // Fallback widget if there's any error
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Error loading lottery card',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+                );
+              }
             },
           );
         }
@@ -79,8 +103,8 @@ class LotteryCardsScreen extends StatelessWidget {
   List<Lottery> _getSortedLotteries(List<Lottery> lotteries) {
     return lotteries.toList()
       ..sort((a, b) {
-        final aExpired = _isDatePassed(a.endDate);
-        final bExpired = _isDatePassed(b.endDate);
+        final aExpired = _isLotteryExpired(a);
+        final bExpired = _isLotteryExpired(b);
 
         // If both are active or both are expired, sort by end date
         if (aExpired == bExpired) {
@@ -89,6 +113,15 @@ class LotteryCardsScreen extends StatelessWidget {
         // Active cards come before expired cards
         return aExpired ? 1 : -1;
       });
+  }
+
+  // New method to check if lottery is expired based on announcedResult
+  bool _isLotteryExpired(Lottery lottery) {
+    // Check if announcedResult is '1', which means the lottery is expired
+    if (lottery.announcedResult == '1') {
+      return true;
+    }
+    return false;
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
@@ -150,99 +183,208 @@ class LotteryCardsScreen extends StatelessWidget {
     required String prizeAmount,
     required int circleCount,
     required int maxNumbers,
+    String? image,
+    String? lotteryCategory,
+    String? announcedResult,
   }) {
+    // Convert lottery category to readable string
+    String getCategoryName(String? category) {
+      switch (category) {
+        case '0':
+          return 'Straight';
+        case '1':
+          return 'Rumble';
+        case '2':
+          return 'Chance';
+        case '3':
+          return 'All';
+        default:
+          return 'Unknown';
+      }
+    }
+
+    // Get color for category tag
+    Color getCategoryColor(String? category) {
+      switch (category) {
+        case '0':
+          return Colors.blue;
+        case '1':
+          return Colors.orange;
+        case '2':
+          return Colors.green;
+        case '3':
+          return AppColors.secondaryColor;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    // Check if lottery is expired based on announcedResult
+    final bool isExpired = announcedResult == '1';
+    final String categoryName = getCategoryName(lotteryCategory ?? '0');
+    final Color categoryColor = getCategoryColor(lotteryCategory ?? '0');
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryColor.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: AppColors.primaryColor.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Card Header
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primaryColor, AppColors.secondaryColor],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Title and lottery numbers
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Select $circleCount numbers',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
+          // Card Header with image background if available
+          Stack(
+            children: [
+              // Background gradient or image
+              Container(
+                height: 90, // Reduced height
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primaryColor, AppColors.secondaryColor],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
                   ),
                 ),
-                // Price tag
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'AED ${price.toInt()}',
-                    style: TextStyle(
-                      color: AppColors.primaryColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                // Only try to display image if it's not null or empty
+                // child: (image != null && image.isNotEmpty)
+                //     ? ClipRRect(
+                //   borderRadius: const BorderRadius.only(
+                //     topLeft: Radius.circular(12),
+                //     topRight: Radius.circular(12),
+                //   ),
+                //   child: Image.network(
+                //     image,
+                //     fit: BoxFit.cover,
+                //     errorBuilder: (context, error, stackTrace) {
+                //       return const SizedBox.shrink();
+                //     },
+                //   ),
+                // )
+                //     : null,
+              ),
+
+              // Header content
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row with category tag and price
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Category tag
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            categoryName,
+                            style: TextStyle(
+                              color: categoryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+
+                        // Price tag
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'AED ${price.toInt()}',
+                            style: TextStyle(
+                              color: AppColors.primaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Lottery title and description
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    Text(
+                      'Select $circleCount numbers',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Expired badge if applicable
+              if (isExpired)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'EXPIRED',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
 
           // Lottery numbers preview
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Row(
               children: [
                 Expanded(
                   child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: 6,
+                    runSpacing: 6,
                     children: List.generate(
                       circleCount > 6 ? 6 : circleCount,
-                      (index) => Container(
-                        width: 32,
-                        height: 32,
+                          (index) => Container(
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.inputFieldBackground,
@@ -257,7 +399,7 @@ class LotteryCardsScreen extends StatelessWidget {
                             style: TextStyle(
                               color: AppColors.primaryColor,
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              fontSize: 14,
                             ),
                           ),
                         ),
@@ -267,20 +409,20 @@ class LotteryCardsScreen extends StatelessWidget {
                 ),
                 if (circleCount > 6)
                   Container(
-                    margin: const EdgeInsets.only(left: 8),
+                    margin: const EdgeInsets.only(left: 4),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 6,
+                      vertical: 2,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.inputFieldBackground,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '+${circleCount - 6}',
                       style: const TextStyle(
                         color: AppColors.primaryColor,
-                        fontSize: 14,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -289,76 +431,83 @@ class LotteryCardsScreen extends StatelessWidget {
             ),
           ),
 
-          // Draw date and prize info
+          // Draw date and prize info (more compact layout)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: Row(
               children: [
-                // Calendar icon
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.inputFieldBackground,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.calendar_today_rounded,
-                            color: AppColors.primaryColor,
-                            size: 16,
-                          ),
+                // Calendar info
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.inputFieldBackground,
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Draw Date: $drawDate',
+                        child: const Icon(
+                          Icons.calendar_today_rounded,
+                          color: AppColors.primaryColor,
+                          size: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          drawDate,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             color: AppColors.textDark,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.inputFieldBackground,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.emoji_events_rounded,
-                            color: AppColors.primaryColor,
-                            size: 16,
-                          ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Prize info
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.inputFieldBackground,
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
+                        child: const Icon(
+                          Icons.emoji_events_rounded,
+                          color: AppColors.primaryColor,
+                          size: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
                           prizeAmount,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textDark,
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Play button
-          // Then modify the GestureDetector for the Play button:
+          // Play button (more compact)
           GestureDetector(
             onTap: () {
-              if (_isDatePassed(drawDate)) {
+              if (isExpired) {
                 Get.snackbar(
                   'Expired Lottery',
                   'This lottery draw has ended and cannot be played',
@@ -374,27 +523,28 @@ class LotteryCardsScreen extends StatelessWidget {
                     numbersPerRow: circleCount,
                     price: price,
                     endDate: drawDate,
-                        maxNumber: maxNumbers, // Add this parameter
+                    maxNumber: maxNumbers,
+                        announcedResult: announcedResult,
                   ),
                   transition: Transition.rightToLeft,
                 );
               }
             },
             child: Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                gradient: _isDatePassed(drawDate)
+                gradient: isExpired
                     ? LinearGradient(colors: [Colors.grey, Colors.grey.shade600])
                     : AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: _isDatePassed(drawDate)
-                        ? Colors.grey.withOpacity(0.3)
-                        : AppColors.primaryColor.withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    color: isExpired
+                        ? Colors.grey.withOpacity(0.2)
+                        : AppColors.primaryColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
@@ -402,19 +552,19 @@ class LotteryCardsScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _isDatePassed(drawDate) ? 'Expired' : 'Play Now',
+                    isExpired ? 'Expired' : 'Play Now',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 14,
                     ),
                   ),
-                  if (!_isDatePassed(drawDate)) const SizedBox(width: 8),
-                  if (!_isDatePassed(drawDate))
+                  if (!isExpired) const SizedBox(width: 6),
+                  if (!isExpired)
                     const Icon(
                       Icons.play_circle_outline_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 18,
                     ),
                 ],
               ),
@@ -423,15 +573,5 @@ class LotteryCardsScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  // Add this helper method to check if date has passed
-  bool _isDatePassed(String dateString) {
-    try {
-      final date = DateTime.parse(dateString);
-      return date.isBefore(DateTime.now());
-    } catch (e) {
-      return false; // If date parsing fails, assume it's not passed
-    }
   }
 }

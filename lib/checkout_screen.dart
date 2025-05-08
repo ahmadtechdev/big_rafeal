@@ -44,7 +44,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       return _lotteryController.lotteries.firstWhere((lottery) => lottery.id == widget.lotteryId);
     } catch (e) {
-      print('Lottery not found: $e');
       return null;
     }
   }
@@ -67,8 +66,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       try {
         final drawDate = DateTime.parse(_currentLottery!.endDate);
         return '${drawDate.day.toString().padLeft(2, '0')}.${drawDate.month.toString().padLeft(2, '0')}.${drawDate.year} ${drawDate.hour.toString().padLeft(2, '0')}:${drawDate.minute.toString().padLeft(2, '0')} ${drawDate.hour >= 12 ? 'PM' : 'AM'}';
+      // ignore: empty_catches
       } catch (e) {
-        print('Error parsing draw date: $e');
       }
     }
 
@@ -146,7 +145,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       return byteData!.buffer.asUint8List();
     } catch (e) {
-      print('Error generating QR code: $e');
       return Uint8List.fromList([]);
     }
   }
@@ -156,7 +154,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final ByteData data = await rootBundle.load('assets/pencil.png');
       return data.buffer.asUint8List();
     } catch (e) {
-      print('Error loading pencil logo: $e');
       return null;
     }
   }
@@ -167,7 +164,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final ByteData data = await rootBundle.load('assets/logo2.png');
       return data.buffer.asUint8List();
     } catch (e) {
-      print('Error loading company logo: $e');
       return null;
     }
   }
@@ -482,7 +478,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // Get lottery name and winning price from lottery model or use defaults
       final String lotteryName = _currentLottery?.lotteryName ?? 'Lot Name';
-      final String winningPrice = _currentLottery?.winningPrice ?? '000';
+      final String winningPrice = _currentLottery?.highestPrize.toString() ?? '000';
       final String winningNumbers = _currentLottery?.winningNumber ?? '';
       final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
       final String lotteryCode = _currentLottery?.lotteryCode ?? '';
@@ -535,10 +531,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               selectedNumbers: selectedNumbersStr,
               winOrLoss: winOrLoss, ticketId: ticketId
           );
-          print("data send to api");
         } catch (e) {
           _showSnackBar('Error saving ticket ${i+1}: $e');
-          print('Error saving lottery sale: $e');
           // Continue with other tickets even if one fails
         }
       }
@@ -789,7 +783,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     } catch (e) {
       _showSnackBar('Error printing receipts: $e');
-      print('Printing error: $e');
     } finally {
       setState(() {
         _isPrinting = false;

@@ -32,14 +32,12 @@ class UserController extends GetxController {
     };
 
     storage.write('user_data', jsonEncode(userData));
-    print('User data saved: ${user.name}, expires: ${DateTime.fromMillisecondsSinceEpoch(expirationTime)}');
   }
 
   void clearUser() {
     currentUser.value = null;
     // Remove user from storage
     storage.remove('user_data');
-    print('User data cleared');
   }
 
   bool get isLoggedIn => currentUser.value != null;
@@ -58,16 +56,12 @@ class UserController extends GetxController {
           // Login still valid
           final userMap = userDataMap['user'] as Map<String, dynamic>;
           currentUser.value = User.fromJson(userMap);
-          print('User loaded from storage: ${currentUser.value?.name}');
-          print('Login expires: ${DateTime.fromMillisecondsSinceEpoch(expirationTime)}');
         } else {
           // Login expired, clear data
-          print('Login expired, clearing user data');
           clearUser();
         }
       }
     } catch (e) {
-      print('Error loading user from storage: $e');
       // Clear any corrupted data
       clearUser();
     }
@@ -97,7 +91,6 @@ class UserController extends GetxController {
             currentTime < expirationTime;
       }
     } catch (e) {
-      print('Error checking login expiration: $e');
     }
     return false;
   }
@@ -117,7 +110,6 @@ class UserController extends GetxController {
         }
       }
     } catch (e) {
-      print('Error calculating remaining login days: $e');
     }
     return 0;
   }

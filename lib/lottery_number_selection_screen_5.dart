@@ -7,6 +7,7 @@ import 'controllers/lottery_controller.dart';
 import 'utils/app_colors.dart';
 import 'checkout_screen.dart';
 
+// ignore: must_be_immutable
 class LotteryNumberSelectionScreen extends StatefulWidget {
   final String lotteryName;
   int rowCount;
@@ -15,6 +16,8 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
   final int lotteryId;
   final String endDate;
   final int maxNumber;
+   String? announcedResult;
+
 
   LotteryNumberSelectionScreen({
     super.key,
@@ -25,6 +28,7 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
     required this.lotteryId,
     required this.endDate,
     required this.maxNumber,
+    this.announcedResult = "0",
   });
 
   @override
@@ -108,14 +112,16 @@ class _LotteryNumberSelectionScreenState
 
   void _clearSelection() {
     setState(() {
-      selectedNumbersRows[activeRowIndex] = [];
+      if (selectedNumbersRows[activeRowIndex].isNotEmpty) {
+        selectedNumbersRows[activeRowIndex].removeLast();
+      }
     });
   }
 
 
   void _quickPick() {
     setState(() {
-      List<int> availableNumbers = List.generate(25, (index) => index + 1);
+      List<int> availableNumbers = List.generate( widget.maxNumber, (index) => index + 1);
       availableNumbers.shuffle();
       selectedNumbersRows[activeRowIndex] =
           availableNumbers.take(widget.numbersPerRow).toList();
@@ -126,7 +132,7 @@ class _LotteryNumberSelectionScreenState
   void _quickPickAll() {
     setState(() {
       for (int i = 0; i < selectedNumbersRows.length; i++) {
-        List<int> availableNumbers = List.generate(25, (index) => index + 1);
+        List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + 1);
         availableNumbers.shuffle();
         selectedNumbersRows[i] =
             availableNumbers.take(widget.numbersPerRow).toList();
@@ -697,9 +703,9 @@ class _LotteryNumberSelectionScreenState
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount: widget.maxNumber,
+              itemCount: widget.maxNumber+1,
               itemBuilder: (context, index) {
-                final number = index + 1;
+                final number = index;
                 final isSelected = selectedNumbersRows[activeRowIndex].contains(
                   number,
                 );
@@ -739,7 +745,9 @@ class _LotteryNumberSelectionScreenState
     );
   }
 
+
   Widget _buildBottomButtons() {
+    final bool isExpired = widget.announcedResult == '1';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -784,7 +792,7 @@ class _LotteryNumberSelectionScreenState
           const SizedBox(width: 16),
           Expanded(
             child: GestureDetector(
-              onTap: DateTime.now().isAfter(endDateTime)
+              onTap: isExpired
                   ? null
                   : _areAllRowsComplete()
                   ? _navigateToCheckout
@@ -802,7 +810,7 @@ class _LotteryNumberSelectionScreenState
                 ),
                 child: Center(
                   child: Text(
-                    DateTime.now().isAfter(endDateTime)
+                    isExpired
                         ? 'LOTTERY EXPIRED'
                         : 'NEXT (AED ${(widget.price * widget.rowCount).toInt()})',
                     style: const TextStyle(

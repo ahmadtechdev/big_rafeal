@@ -3,8 +3,8 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'controllers/lottery_result_controller.dart';
 import 'controllers/user_controller.dart';
+import 'dashboard.dart';
 import 'home_screen_1.dart';
-import 'lottery_screen_3.dart';
 import 'utils/app_colors.dart';
 
 Future<void> main() async {
@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.backgroundColor,
       ),
         home: Obx(() => userController.isLoggedIn
-            ? LotteryScreen() // If user is logged in, go directly to lottery screen
+            ? AnimatedHomeScreen() // If user is logged in, go directly to lottery screen
             : const HomeScreen()),
     );
   }

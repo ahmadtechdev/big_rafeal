@@ -99,7 +99,7 @@ class SalesReportController extends GetxController {
 
     // Calculate commission (25% of net sales)
     final netSales = sales - winnings;
-    userCommission.value = totalSales * 0.25;
+    userCommission.value = totalSales * 0.15;
     payableToAdmin.value = netSales - userCommission.value;
   }
 
@@ -111,7 +111,6 @@ class SalesReportController extends GetxController {
             (l) => l.lotteryId == userLottery.lotteryId
     );
 
-    print(lottery);
 
     lottery ??= _lotteryController.lotteries.firstWhereOrNull(
             (l) => l.lotteryCode == userLottery.lotteryCode
@@ -135,17 +134,11 @@ class SalesReportController extends GetxController {
       updatedAt: '',
       lotteryName: '',
       purchasePrice: '0',
-      winningPrice: '0',
+
       lotteryCode: '',
       image: '',
-      thirdWin: '0',
-      fourWin: '0',
-      fiveWin: '0',
-      sixWin: '0',
-      sevenWin: '0',
-      eightWin: '0',
-      nineWin: '0',
-      tenWin: '0',
+
+      lotteryCategory: '0',
     );
   }
 
