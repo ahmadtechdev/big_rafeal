@@ -140,7 +140,7 @@ class LotteryScreen extends StatelessWidget {
 
               // Check if all lotteries are expired
               if (lotteryController.lotteries.every(
-                (lottery) => _isLotteryExpired(lottery.endDate.toString()),
+                (lottery) => _isLotteryExpired(lottery.announcedResult),
               )) {
                 return Center(
                   child: Column(
@@ -211,7 +211,7 @@ class LotteryScreen extends StatelessWidget {
                     // Lottery sections for active lotteries
                     for (var lottery in lotteryController.lotteries.where(
                       (lottery) =>
-                          !_isLotteryExpired(lottery.endDate.toString()),
+                          !_isLotteryExpired(lottery.announcedResult),
                     ))
                       _buildLotterySection(
                         context,
@@ -249,12 +249,41 @@ class LotteryScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo
-          Container(
-            height: 40,
-            width: 100,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(5)),
-            child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+          // Back arrow and Logo
+          Row(
+            children: [
+              // Back arrow
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back,
+                    color: AppColors.primaryColor,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Logo
+              Container(
+                height: 40,
+                width: 100,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(5)),
+                child: Image.asset('assets/logo.png', fit: BoxFit.contain),
+              ),
+            ],
           ),
           Row(
             children: [
@@ -367,7 +396,7 @@ class LotteryScreen extends StatelessWidget {
     // Get active lotteries
     final activeLotteries =
         lotteryController.lotteries
-            .where((lottery) => !_isLotteryExpired(lottery.endDate.toString()))
+            .where((lottery) => !_isLotteryExpired(lottery.announcedResult))
             .toList();
 
     // Find the first active lottery or use a default value if none exist
@@ -848,13 +877,8 @@ class LotteryScreen extends StatelessWidget {
     );
   }
 
-  bool _isLotteryExpired(String endDate) {
-    try {
-      final date = DateTime.parse(endDate);
-      return date.isBefore(DateTime.now());
-    } catch (e) {
-      return false;
-    }
+  bool _isLotteryExpired(int lottery) {
+    return lottery == 1;
   }
 
   double _calculateMaxReward(
@@ -929,7 +953,7 @@ class _NextDrawTimerState extends State<NextDrawTimer> {
   void _updateTimeLeft() {
     final upcomingLotteries =
         widget.lotteryController.lotteries
-            .where((lottery) => !_isLotteryExpired(lottery.endDate.toString()))
+            .where((lottery) => !_isLotteryExpired(lottery.announcedResult))
             .toList();
 
     if (upcomingLotteries.isEmpty) {
@@ -944,13 +968,9 @@ class _NextDrawTimerState extends State<NextDrawTimer> {
     _timeLeft = endDate.difference(now);
   }
 
-  bool _isLotteryExpired(String endDate) {
-    try {
-      final date = DateTime.parse(endDate);
-      return date.isBefore(DateTime.now());
-    } catch (e) {
-      return false;
-    }
+  bool _isLotteryExpired(int lottery) {
+    // Check if announcedResult is 1 (expired) or 0 (not expired)
+    return lottery == 1;
   }
 
   @override

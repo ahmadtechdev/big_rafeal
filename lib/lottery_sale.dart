@@ -232,7 +232,6 @@ class LotteryHistoryScreen extends StatelessWidget {
   Widget _buildLotteryCard(UserLottery lottery, int index) {
     final isWin = lottery.wOrL == 'WIN';
     final isLoss = lottery.wOrL == 'LOSS';
-    final isPending = lottery.wOrL == 'PENDING';
 
     final statusColor = isWin
         ? Colors.green

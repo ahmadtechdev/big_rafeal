@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api
+
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
@@ -149,13 +151,13 @@ class QRScannerService {
 
       // Parse QR data
       final Map<String, dynamic>? qrDataMap = _parseQrData(qrData);
-      if (qrDataMap == null || qrDataMap['ticket_id']!.toString().isEmpty ?? true) {
+      if (qrDataMap == null || qrDataMap['ticket_id']!.toString().isEmpty) {
         Get.back(); // Close loading dialog
         Get.snackbar('Invalid QR Code', 'The scanned QR code is not valid');
         return;
       }
 
-      final String? ticketId = qrDataMap?['ticket_id']!.toString();
+      final String ticketId = qrDataMap['ticket_id']!.toString();
 
       // Handle the API call
       final response = await apiService.checkTicketResult(ticketId!);
@@ -1045,7 +1047,6 @@ class QRScannerService {
 
       Get.snackbar("Printing", "Receipt printed successfully");
     } catch (e) {
-      print('Error printing result receipt: $e');
 
       Get.snackbar("Printing", "Error printing receipt: $e'");
     }
@@ -1056,7 +1057,6 @@ class QRScannerService {
       final ByteData data = await rootBundle.load('assets/logo2.png');
       return data.buffer.asUint8List();
     } catch (e) {
-      print('Error loading company logo: $e');
       return null;
     }
   }
@@ -1281,6 +1281,8 @@ class ScannerOverlayPainter extends CustomPainter {
 
 // Animated scanner line
 class ScannerAnimation extends StatefulWidget {
+  const ScannerAnimation({super.key});
+
   @override
   _ScannerAnimationState createState() => _ScannerAnimationState();
 }

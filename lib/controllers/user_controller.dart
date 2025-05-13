@@ -1,4 +1,6 @@
 // controllers/user_controller.dart
+// ignore_for_file: empty_catches
+
 import 'package:get/get.dart';
 import '../models/user_model.dart';
 import 'package:get_storage/get_storage.dart';

@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -576,7 +575,6 @@ class SalesReportScreen extends StatelessWidget {
       final ByteData data = await rootBundle.load('assets/logo2.png');
       return data.buffer.asUint8List();
     } catch (e) {
-      print('Error loading company logo: $e');
       return null;
     }
   }
@@ -926,7 +924,6 @@ class SalesReportScreen extends StatelessWidget {
       Get.back();
     } catch (e) {
       // _showSnackBar('Error printing receipts: $e');
-      print('Printing error: $e');
     }
   }
 

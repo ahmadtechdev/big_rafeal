@@ -65,7 +65,9 @@ class _LotteryNumberSelectionScreenState
   int get combinationCode {
     // If all available categories are selected, return the combined code
     if (sequenceSelected && rumbleSelected && chanceSelected &&
-        isCategoryAvailable(6)) return 6;
+        isCategoryAvailable(6)) {
+      return 6;
+    }
     if (sequenceSelected && rumbleSelected && isCategoryAvailable(2)) return 2;
     if (sequenceSelected && chanceSelected && isCategoryAvailable(4)) return 4;
     if (rumbleSelected && chanceSelected && isCategoryAvailable(5)) return 5;
@@ -1091,27 +1093,34 @@ class _LotteryNumberSelectionScreenState
   }
 
 // Updated getter for totalPrice to include all selected categories
+  // Modified totalPrice getter to handle special pricing for numberLottery > 5
   double get totalPrice {
-    int selectedCategoryCount = 0;
-    if (sequenceSelected && isCategoryAvailable(0)) selectedCategoryCount++;
-    if (rumbleSelected && isCategoryAvailable(1)) selectedCategoryCount++;
-    if (chanceSelected && isCategoryAvailable(3)) selectedCategoryCount++;
+    // For lotteries with numberLottery > 5, price doesn't increase with category selection
+    if (widget.numbersPerRow > 5) {
+      return widget.price * widget.rowCount;
+    } else {
+      // Original pricing logic for lotteries with numberLottery <= 5
+      int selectedCategoryCount = 0;
+      if (sequenceSelected && isCategoryAvailable(0)) selectedCategoryCount++;
+      if (rumbleSelected && isCategoryAvailable(1)) selectedCategoryCount++;
+      if (chanceSelected && isCategoryAvailable(3)) selectedCategoryCount++;
 
-    // Ensure at least one available category is selected
-    if (selectedCategoryCount == 0) {
-      if (isCategoryAvailable(0)) {
-        sequenceSelected = true;
-        selectedCategoryCount = 1;
-      } else if (isCategoryAvailable(1)) {
-        rumbleSelected = true;
-        selectedCategoryCount = 1;
-      } else if (isCategoryAvailable(3)) {
-        chanceSelected = true;
-        selectedCategoryCount = 1;
+      // Ensure at least one available category is selected
+      if (selectedCategoryCount == 0) {
+        if (isCategoryAvailable(0)) {
+          sequenceSelected = true;
+          selectedCategoryCount = 1;
+        } else if (isCategoryAvailable(1)) {
+          rumbleSelected = true;
+          selectedCategoryCount = 1;
+        } else if (isCategoryAvailable(3)) {
+          chanceSelected = true;
+          selectedCategoryCount = 1;
+        }
       }
-    }
 
-    return widget.price * widget.rowCount * selectedCategoryCount;
+      return widget.price * widget.rowCount * selectedCategoryCount;
+    }
   }
 // Helper method to get simplified combination name
   String _getCombinationName(int code) {
