@@ -66,12 +66,11 @@ class LotteryScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Image.asset(
-                        'assets/no_lottery.png', // Add this asset to your project
+                        'assets/no_lottery.png',
                         width: 150,
                         height: 150,
                       ),
                       const SizedBox(height: 20),
-                      // In the empty state widget, update the text to:
                       const Text(
                         'No Active Tickets',
                         style: TextStyle(
@@ -95,7 +94,6 @@ class LotteryScreen extends StatelessWidget {
                       const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: () => Get.to(() => LotteryHistoryScreen()),
-
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryColor,
                           shape: RoundedRectangleBorder(
@@ -140,9 +138,9 @@ class LotteryScreen extends StatelessWidget {
                 );
               }
 
-              // Add this check before the SingleChildScrollView
+              // Check if all lotteries are expired
               if (lotteryController.lotteries.every(
-                (lottery) => _isLotteryExpired(lottery.endDate),
+                (lottery) => _isLotteryExpired(lottery.endDate.toString()),
               )) {
                 return Center(
                   child: Column(
@@ -210,17 +208,19 @@ class LotteryScreen extends StatelessWidget {
                     // Gradient buttons
                     _buildActionButtons(context),
 
-                    // Lottery sections based on numberLottery groups
-                    // Replace the lottery sections loop with this:
+                    // Lottery sections for active lotteries
                     for (var lottery in lotteryController.lotteries.where(
-                      (lottery) => !_isLotteryExpired(lottery.endDate),
+                      (lottery) =>
+                          !_isLotteryExpired(lottery.endDate.toString()),
                     ))
                       _buildLotterySection(
                         context,
                         lottery.lotteryName,
                         lottery,
-                        lottery.numberLottery,
-                        generateSequentialNumbers(lottery.numberLottery),
+                        int.parse(lottery.numberLottery),
+                        generateSequentialNumbers(
+                          int.parse(lottery.numberLottery),
+                        ),
                       ),
                     const SizedBox(height: 20),
                   ],
@@ -231,22 +231,6 @@ class LotteryScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  // Helper method to get lottery numbers for a specific lottery type
-  List<String> getLotteryNumbers(String numberLottery) {
-    final filteredLotteries = lotteryController.getLotteriesByNumberLottery(
-      numberLottery,
-    );
-    if (filteredLotteries.isEmpty) return [];
-
-    // Get the most recent lottery of this type (assuming sorted by id)
-    final latestLottery = filteredLotteries.reduce(
-      (a, b) => a.id > b.id ? a : b,
-    );
-
-    // Parse the winning numbers
-    return latestLottery.winningNumber.split(', ');
   }
 
   Widget _buildAppBar(BuildContext context) {
@@ -318,7 +302,6 @@ class LotteryScreen extends StatelessWidget {
                     color: AppColors.textDark,
                     size: 22,
                   ),
-                  // Update this line to use the service
                   onPressed: () => qrScannerService.openQRScanner(context),
                 ),
               ),
@@ -330,8 +313,6 @@ class LotteryScreen extends StatelessWidget {
                   color: AppColors.primaryColor,
                 ),
                 onSelected: (value) async {
-                  print(value);
-                  // Update the logout section in PopupMenuButton:
                   if (value == 'logout') {
                     Get.defaultDialog(
                       title: 'Logout',
@@ -355,7 +336,6 @@ class LotteryScreen extends StatelessWidget {
                           duration: const Duration(seconds: 2),
                         );
 
-                        // Navigate to login screen
                         Get.offAll(() => LoginScreen());
                       },
                     );
@@ -384,31 +364,32 @@ class LotteryScreen extends StatelessWidget {
   }
 
   Widget _buildBanner(BuildContext context) {
-    // Get the total number of active lotteries
-    int totalLotteries = lotteryController.lotteries
-        .where((lottery) => !_isLotteryExpired(lottery.endDate))
-        .length;
+    // Get active lotteries
+    final activeLotteries =
+        lotteryController.lotteries
+            .where((lottery) => !_isLotteryExpired(lottery.endDate.toString()))
+            .toList();
 
     // Find the first active lottery or use a default value if none exist
-    final activeLottery = lotteryController.lotteries.firstWhere(
-          (lottery) => !_isLotteryExpired(lottery.endDate),
-      orElse: () => Lottery(
-        id: 0,
-        lotteryId: '',
-        numberLottery: 0,
-        digits: '',
-        startDate: '',
-        endDate: '',
-        winningNumber: '',
-        createdAt: '',
-        updatedAt: '',
-        lotteryName: 'No Active Lottery',
-        purchasePrice: '0',
-        lotteryCode: '',
-        image: '',
-        lotteryCategory: '',
-      ),
-    );
+    final activeLottery =
+        activeLotteries.isNotEmpty
+            ? activeLotteries.first
+            : Lottery(
+              id: 0,
+              lotteryName: 'No Active Lottery',
+              numberLottery: '0',
+              purchasePrice: '0',
+              digits: '0',
+              announcedResult: 0,
+              startDate: DateTime.now(),
+              endDate: DateTime.now(),
+              sequenceRewards: {},
+              rumbleRewards: {},
+              chanceRewards: {},
+              image: '',
+              maxReward: 0,
+              lotteryCategory: '',
+            );
 
     return Container(
       width: double.infinity,
@@ -436,7 +417,7 @@ class LotteryScreen extends StatelessWidget {
           // Banner carousel
           BannerCarousel(
             lotteryController: lotteryController,
-            totalLotteries: totalLotteries,
+            totalLotteries: activeLotteries.length,
             activeLottery: activeLottery,
           ),
 
@@ -457,6 +438,7 @@ class LotteryScreen extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildActionButtons(BuildContext context) {
     final UserController userController = Get.put(UserController());
 
@@ -480,21 +462,18 @@ class LotteryScreen extends StatelessWidget {
               }
 
               try {
-                // Show loading indicator
                 Get.dialog(
                   const Center(child: CircularProgressIndicator()),
                   barrierDismissible: false,
                 );
 
-                // Check if user exists
                 final userExists = await ApiService().checkUserExists(
                   userController.currentUser.value!.id,
                 );
 
-                Get.back(); // Dismiss loading indicator
+                Get.back();
 
                 if (!userExists) {
-                  // Logout user if doesn't exist
                   userController.clearUser();
                   Get.offAll(() => LoginScreen());
                   Get.snackbar(
@@ -505,14 +484,13 @@ class LotteryScreen extends StatelessWidget {
                     colorText: Colors.white,
                   );
                 } else {
-                  // Proceed to play
                   Get.to(
                     () => LotteryCardsScreen(),
                     transition: Transition.rightToLeft,
                   );
                 }
               } catch (e) {
-                Get.back(); // Dismiss loading indicator
+                Get.back();
                 Get.snackbar(
                   'Error',
                   'Failed to verify user: $e',
@@ -587,37 +565,18 @@ class LotteryScreen extends StatelessWidget {
   }
 
   Widget _buildLotterySection(
-      BuildContext context,
-      String title,
-      Lottery lottery,
-      int circleCount,
-      List<String> numbers,
-      ) {
-    // Convert lottery category code to readable text
-    String categoryText;
-    Color categoryColor;
-
-    switch(lottery.lotteryCategory) {
-      case "0":
-        categoryText = "Sequence";
-        categoryColor = Colors.blue;
-        break;
-      case "1":
-        categoryText = "Rumble";
-        categoryColor = Colors.orange;
-        break;
-      case "2":
-        categoryText = "Chance";
-        categoryColor = Colors.green;
-        break;
-      case "3":
-        categoryText = "All Types";
-        categoryColor = Colors.purple;
-        break;
-      default:
-        categoryText = "Unknown";
-        categoryColor = Colors.grey;
-    }
+    BuildContext context,
+    String title,
+    Lottery lottery,
+    int circleCount,
+    List<String> numbers,
+  ) {
+    // Calculate max reward from all reward types
+    final maxReward = _calculateMaxReward(
+      lottery.sequenceRewards,
+      lottery.rumbleRewards,
+      lottery.chanceRewards,
+    );
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -660,23 +619,22 @@ class LotteryScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Add category badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: categoryColor.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: categoryColor,
-                          width: 1,
-                        ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
                       ),
-                      child: Text(
-                        categoryText,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white, width: 1),
+                      ),
+                      child: const Text(
+                        'Lottery',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: categoryColor,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -694,7 +652,7 @@ class LotteryScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      lottery.highestPrize.toStringAsFixed(2),
+                      maxReward.toStringAsFixed(2),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -724,9 +682,11 @@ class LotteryScreen extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
-                    // Price tag
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -752,7 +712,7 @@ class LotteryScreen extends StatelessWidget {
                   runSpacing: 8,
                   children: List.generate(
                     circleCount,
-                        (index) => TweenAnimationBuilder(
+                    (index) => TweenAnimationBuilder(
                       tween: Tween<double>(begin: 0.5, end: 1.0),
                       duration: Duration(milliseconds: 300 + (index * 100)),
                       curve: Curves.easeOutBack,
@@ -825,21 +785,18 @@ class LotteryScreen extends StatelessWidget {
                 }
 
                 try {
-                  // Show loading indicator
                   Get.dialog(
                     const Center(child: CircularProgressIndicator()),
                     barrierDismissible: false,
                   );
 
-                  // Check if user exists
                   final userExists = await ApiService().checkUserExists(
                     userController.currentUser.value!.id,
                   );
 
-                  Get.back(); // Dismiss loading indicator
+                  Get.back();
 
                   if (!userExists) {
-                    // Logout user if doesn't exist
                     userController.clearUser();
                     Get.offAll(() => LoginScreen());
                     Get.snackbar(
@@ -850,14 +807,13 @@ class LotteryScreen extends StatelessWidget {
                       colorText: Colors.white,
                     );
                   } else {
-                    // Proceed to play
                     Get.to(
-                          () => LotteryCardsScreen(),
+                      () => LotteryCardsScreen(),
                       transition: Transition.rightToLeft,
                     );
                   }
                 } catch (e) {
-                  Get.back(); // Dismiss loading indicator
+                  Get.back();
                   Get.snackbar(
                     'Error',
                     'Failed to verify user: $e',
@@ -897,15 +853,42 @@ class LotteryScreen extends StatelessWidget {
       final date = DateTime.parse(endDate);
       return date.isBefore(DateTime.now());
     } catch (e) {
-      return false; // If date parsing fails, assume it's not expired
+      return false;
     }
+  }
+
+  double _calculateMaxReward(
+    Map<String, String> sequenceRewards,
+    Map<String, String> rumbleRewards,
+    Map<String, String> chanceRewards,
+  ) {
+    double max = 0;
+
+    // Check sequence rewards
+    for (var value in sequenceRewards.values) {
+      final amount = double.tryParse(value) ?? 0;
+      if (amount > max) max = amount;
+    }
+
+    // Check rumble rewards
+    for (var value in rumbleRewards.values) {
+      final amount = double.tryParse(value) ?? 0;
+      if (amount > max) max = amount;
+    }
+
+    // Check chance rewards
+    for (var value in chanceRewards.values) {
+      final amount = double.tryParse(value) ?? 0;
+      if (amount > max) max = amount;
+    }
+
+    return max;
   }
 
   Widget _buildNextDrawTimer() {
     return NextDrawTimer(lotteryController: lotteryController);
   }
 
-  // Add this helper method to generate sequential numbers
   List<String> generateSequentialNumbers(int count) {
     return List.generate(count, (index) => (index + 1).toString());
   }
@@ -946,7 +929,7 @@ class _NextDrawTimerState extends State<NextDrawTimer> {
   void _updateTimeLeft() {
     final upcomingLotteries =
         widget.lotteryController.lotteries
-            .where((lottery) => !_isLotteryExpired(lottery.endDate))
+            .where((lottery) => !_isLotteryExpired(lottery.endDate.toString()))
             .toList();
 
     if (upcomingLotteries.isEmpty) {
@@ -956,7 +939,7 @@ class _NextDrawTimerState extends State<NextDrawTimer> {
 
     upcomingLotteries.sort((a, b) => a.endDate.compareTo(b.endDate));
     final nextLottery = upcomingLotteries.first;
-    final endDate = DateTime.parse(nextLottery.endDate);
+    final endDate = DateTime.parse(nextLottery.endDate.toString());
     final now = DateTime.now();
     _timeLeft = endDate.difference(now);
   }

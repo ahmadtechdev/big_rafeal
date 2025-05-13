@@ -1,37 +1,41 @@
-// qr_scanner_service.dart
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-
+import '../api_service/api_service.dart';
 import '../controllers/lottery_controller.dart';
 import '../controllers/lottery_result_controller.dart';
 import '../models/lottery_model.dart';
-import '../models/user_lottery_modal.dart';
 import '../utils/app_colors.dart';
-
 
 class QRScannerService {
   final LotteryController lotteryController;
   final MobileScannerController scannerController = MobileScannerController();
+  final ApiService apiService = Get.put(ApiService());
+  final LotteryResultController resultController = Get.find<LotteryResultController>();
+
+  // Create a RxBool to track loading state
+  final RxBool isLoading = false.obs;
 
   QRScannerService({required this.lotteryController});
 
   Future<void> openQRScanner(BuildContext context) async {
-    // Fetch lotteries first before opening scanner
-    await lotteryController.fetchLotteries();
+    // Reset loading state
+    isLoading.value = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.85,
+      builder: (BuildContext modalContext) => SizedBox(
+        height: MediaQuery.of(modalContext).size.height * 0.85,
         child: Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -69,7 +73,7 @@ class QRScannerService {
                       icon: const Icon(Icons.close, color: Colors.white),
                       onPressed: () {
                         scannerController.stop();
-                        Navigator.of(context).pop();
+                        Navigator.of(modalContext).pop();
                       },
                     ),
                   ],
@@ -84,11 +88,17 @@ class QRScannerService {
                       onDetect: (capture) {
                         final List<Barcode> barcodes = capture.barcodes;
                         if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+                          // Prevent multiple scans
+                          if (isLoading.value) return;
+
+                          isLoading.value = true;
+
                           // Close the scanner
                           scannerController.stop();
-                          Navigator.pop(context);
+                          Navigator.pop(modalContext);
 
                           // Process the scanned QR code
+                          // We pass the original context, not modalContext
                           processQRCode(context, barcodes.first.rawValue!);
                         }
                       },
@@ -96,8 +106,8 @@ class QRScannerService {
                     // Overlay with scanning frame
                     CustomPaint(
                       size: Size(
-                        MediaQuery.of(context).size.width,
-                        MediaQuery.of(context).size.height,
+                        MediaQuery.of(modalContext).size.width,
+                        MediaQuery.of(modalContext).size.height,
                       ),
                       painter: ScannerOverlayPainter(),
                     ),
@@ -126,93 +136,188 @@ class QRScannerService {
       scannerController.stop();
     });
   }
-
-// Then modify the processQRCode method:
-  void processQRCode(BuildContext context, String qrData) async {
+  Future<void> processQRCode(BuildContext context, String qrData) async {
     try {
-      final resultController = LotteryResultController.instance;
-
-      // Parse the JSON data from QR code
-      final Map<String, dynamic> qrDataMap = jsonDecode(qrData);
-
-      final int lotteryId = qrDataMap['l'];
-      final String ticketId = qrDataMap['t'];
-
-      // Handle numbers conversion
-      final String numbersString = qrDataMap['n'];
-      final List<int> selectedNumbers = numbersString.split(',').map((n) => int.parse(n.trim())).toList();
-
-      // Handle timestamp conversion
-      final int timestamp = qrDataMap['d'];
-      final DateTime purchaseDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
-
-      // Find the lottery by ID
-      final lottery = lotteryController.lotteries.firstWhere(
-            (l) => l.id == lotteryId,
-        orElse: () => throw Exception('Lottery not found'),
+      // Show loading dialog
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
       );
 
-      // Parse end date
-      final DateTime endDate = DateTime.parse(lottery.endDate);
-      final DateTime now = DateTime.now();
+      // Refresh lottery data first
+      await lotteryController.fetchLotteries();
 
-      if (now.isBefore(endDate)) {
-        // Results not announced yet
-        final timeLeft = endDate.difference(now);
-        showPendingResultsDialog(context, timeLeft);
+      // Parse QR data
+      final Map<String, dynamic>? qrDataMap = _parseQrData(qrData);
+      if (qrDataMap == null || qrDataMap['ticket_id']!.toString().isEmpty ?? true) {
+        Get.back(); // Close loading dialog
+        Get.snackbar('Invalid QR Code', 'The scanned QR code is not valid');
         return;
       }
 
-      // Check the result
-      final userLottery = UserLottery(
-        id: 0,
-        userId: 0,
-        ticketId: ticketId,
-        lotteryId: lotteryId.toString(),
-        userName: '',
-        userEmail: '',
-        userNumber: '',
-        lotteryName: lottery.lotteryName,
-        purchasePrice: lottery.purchasePrice,
-        numberOfLottery: '1',
-        lotteryIssueDate: purchaseDate.toString(),
-        selectedNumbers: numbersString,
-        wOrL: '',
-        createdAt: '',
-        updatedAt: '',
-        lotteryCode: lottery.lotteryCode, winningPrice: '',
-      );
+      final String? ticketId = qrDataMap?['ticket_id']!.toString();
 
-      final result = resultController.checkLotteryResult(userLottery, lottery);
+      // Handle the API call
+      final response = await apiService.checkTicketResult(ticketId!);
 
-      // Get winning numbers properly
-      final List<String> winningNumbersStr = lottery.winningNumber.split(',');
-      final List<int> winningNumbers = winningNumbersStr.map((n) => int.parse(n.trim())).toList();
+      // Close loading dialog
+      Get.back();
 
-      showResultDialog(
-        context,
-        result,
-        lottery,
-        selectedNumbers.length,
-        selectedNumbers,
-        winningNumbers
+      if (!response.containsKey('success')) {
+        Get.snackbar('Error', 'Invalid response from server');
+        return;
+      }
+
+      if (response['success'] == false) {
+        if (response['message'] == 'Ticket not found') {
+          Get.dialog(
+            AlertDialog(
+              title: Text('Ticket Not Found'),
+              content: Text('This ticket could not be found in our system'),
+              actions: [
+                TextButton(
+                  onPressed: () => Get.back(),
+                  child: Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else if (response['message'] == 'Lottery result is not announced yet') {
+          _handlePendingResults(response);
+        } else {
+          Get.snackbar('Error', response['message'] ?? 'An unknown error occurred');
+        }
+        return;
+      }
+
+      // Handle successful response
+      _handleSuccessfulResult(response);
+    } on DioException catch (e) {
+      Get.back(); // Close loading dialog
+      Get.snackbar(
+        'Network Error',
+        e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.connectionError
+            ? 'Please check your internet connection'
+            : 'Failed to connect to server',
       );
     } catch (e) {
-      print('Error processing QR code: $e');
-      showErrorDialog(
-        context,
-        'Invalid Ticket',
-        'The scanned ticket is invalid or expired. Error: ${e.toString()}',
-      );
+      Get.back(); // Close loading dialog
+      Get.snackbar('Error', 'An unexpected error occurred');
+    } finally {
+      isLoading.value = false;
     }
   }
-// Add this new dialog for pending results
-  void showPendingResultsDialog(BuildContext context, Duration timeLeft) {
+
+  void _handlePendingResults(Map<String, dynamic> response) {
+    final lotteryIdStr = response['lottery_id']?.toString().trim();
+    final lotteryId = int.tryParse(lotteryIdStr ?? '');
+
+    if (lotteryId == null) {
+      Get.snackbar('Error', 'Invalid lottery information');
+      return;
+    }
+    final lottery = lotteryController.lotteries.firstWhereOrNull(
+            (l) => l.id == lotteryId || l.id.toString() == lotteryIdStr
+    );
+
+    if (lottery != null) {
+      final timeLeft = lottery.endDate.difference(DateTime.now());
+      _showPendingResultsDialog(timeLeft);
+    } else {
+      Get.snackbar('Error', 'Lottery information not found');
+    }
+  }
+
+  void _handleSuccessfulResult(Map<String, dynamic> response) {
+    final lotteryId = int.tryParse(response['lottery_id']?.toString() ?? '');
+    if (lotteryId == null) {
+      Get.snackbar('Error', 'Invalid lottery information');
+      return;
+    }
+
+    final lottery = lotteryController.lotteries.firstWhereOrNull((l) => l.id == lotteryId);
+    if (lottery == null) {
+      Get.snackbar('Error', 'Lottery not found');
+      return;
+    }
+
+    final selectedNumbers = _parseNumbers(response['selected_numbers']);
+    final winningNumbers = _parseNumbers(response['winning_numbers']);
+
+    if (selectedNumbers.isEmpty || winningNumbers.isEmpty) {
+      Get.snackbar('Error', 'Invalid number data');
+      return;
+    }
+
+    final result = LotteryResult(
+      resultType: _parseResultType(response),
+      matchCount: (response['matched_numbers'] as int?) ?? 0,
+      prizeAmount: double.tryParse(response['win_amount']?.toString() ?? '') ?? 0,
+      selectedNumbers: selectedNumbers,
+      winningNumbers: winningNumbers,
+      isSequenceMatch: response['isSequenceMatch'] ?? false,
+      isChanceMatch: response['isChanceMatch'] ?? false,
+      isRumbleMatch: response['isRumbleMatch'] ?? false,
+    );
+
+    _showResultDialog(
+      result,
+      lottery,
+      selectedNumbers.length,
+      selectedNumbers,
+      winningNumbers,
+    );
+  }
+  // Helper to close loading dialog and show error
+
+  // Helper methods
+  Map<String, dynamic>? _parseQrData(String qrData) {
+    try {
+      return jsonDecode(qrData);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  List<int> _parseNumbers(dynamic numbers) {
+    try {
+      return (numbers as List).map((n) => int.parse(n.toString())).toList();
+    } catch (e) {
+      return [];
+    }
+  }
+
+  ResultType _parseResultType(Map<String, dynamic> response) {
+    if (response['isFullWin'] == true) return ResultType.fullWin;
+    if (response['isSequenceMatch'] == true) return ResultType.sequenceWin;
+    if (response['isChanceMatch'] == true) return ResultType.chanceWin;
+    if (response['isRumbleMatch'] == true) return ResultType.rumbleWin;
+    return ResultType.loss;
+  }
+
+  // Show error dialog safely
+  void _showErrorDialog(BuildContext context, String title, String message) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return Dialog(
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Display pending results dialog
+  void _showPendingResultsDialog(Duration timeLeft) {
+    Get.dialog(
+      Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 0,
           backgroundColor: Colors.transparent,
@@ -274,7 +379,7 @@ class QRScannerService {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Get.back(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
                     padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
@@ -293,19 +398,13 @@ class QRScannerService {
               ],
             ),
           ),
-        );
-      },
+      ),
+      barrierDismissible: false,
     );
   }
 
-
-// Add these imports to your existing imports in qr_scanner_service.dart
-
-// Then update your showResultDialog method to include a print button:
-  // Updated showResultDialog method
-  // Updated showResultDialog to handle all match types clearly
-  void showResultDialog(
-      BuildContext context,
+  // Display result dialog with win or loss
+  void _showResultDialog(
       LotteryResult result,
       Lottery lottery,
       int totalNumbers,
@@ -352,11 +451,8 @@ class QRScannerService {
       resultMessage = 'Try again for a chance to win big!';
     }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return Dialog(
+    Get.dialog(
+        Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 0,
           backgroundColor: Colors.transparent,
@@ -499,7 +595,7 @@ class QRScannerService {
                     children: [
                       ElevatedButton(
                         onPressed: () {
-                          _printResultReceipt(context, result, lottery, selectedNumbers, winningNumbers);
+                          _printResultReceipt(result, lottery, selectedNumbers, winningNumbers);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[800],
@@ -524,7 +620,7 @@ class QRScannerService {
                         ),
                       ),
                       ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () => Get.back(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryColor,
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -548,8 +644,8 @@ class QRScannerService {
               ),
             ),
           ),
-        );
-      },
+        ),
+      barrierDismissible: false,
     );
   }
 
@@ -761,7 +857,6 @@ class QRScannerService {
 
 // Update the _printResultReceipt method
   Future<void> _printResultReceipt(
-      BuildContext context,
       LotteryResult result,
       Lottery lottery,
       List<int> selectedNumbers,
@@ -769,9 +864,8 @@ class QRScannerService {
       ) async {
     try {
       // Show printing indicator
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preparing receipt for printing...')),
-      );
+
+      Get.snackbar("Printing", "Preparing receipt for printing...");
 
       // Create PDF document
       final pdf = pw.Document();
@@ -827,7 +921,7 @@ class QRScannerService {
                   pw.Text(lottery.lotteryName,
                       style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 4),
-                  pw.Text('GRAND JACKPOT ${lottery.highestPrize} AED',
+                  pw.Text('GRAND JACKPOT ${lottery.maxReward} AED',
                       style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   pw.Divider(thickness: 1),
 
@@ -949,14 +1043,11 @@ class QRScannerService {
           format: PdfPageFormat.roll80
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Receipt printed successfully')),
-      );
+      Get.snackbar("Printing", "Receipt printed successfully");
     } catch (e) {
       print('Error printing result receipt: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error printing receipt: $e')),
-      );
+
+      Get.snackbar("Printing", "Error printing receipt: $e'");
     }
   }
 
@@ -1106,8 +1197,9 @@ class QRScannerService {
       },
     );
   }
-
   void showErrorDialog(BuildContext context, String title, String message) {
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) {

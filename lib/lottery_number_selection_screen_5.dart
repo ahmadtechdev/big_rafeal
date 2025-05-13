@@ -16,8 +16,11 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
   final int lotteryId;
   final String endDate;
   final int maxNumber;
-   String? announcedResult;
-
+  String? announcedResult;
+  final Map<String, String> sequenceRewards;
+  final Map<String, String> rumbleRewards;
+  final Map<String, String> chanceRewards;
+  final String lotteryCategory;
 
   LotteryNumberSelectionScreen({
     super.key,
@@ -29,6 +32,10 @@ class LotteryNumberSelectionScreen extends StatefulWidget {
     required this.endDate,
     required this.maxNumber,
     this.announcedResult = "0",
+    required this.sequenceRewards,
+    required this.rumbleRewards,
+    required this.chanceRewards,
+    required this.lotteryCategory,
   });
 
   @override
@@ -49,6 +56,55 @@ class _LotteryNumberSelectionScreenState
 
   List<List<int>> selectedNumbersRows = [];
   int activeRowIndex = 0;
+  // Add these new variables for category selection
+  bool sequenceSelected = false;
+  bool rumbleSelected = false;
+  bool chanceSelected = false;
+
+  // Calculate combination code based on selected categories
+  int get combinationCode {
+    // If all available categories are selected, return the combined code
+    if (sequenceSelected && rumbleSelected && chanceSelected &&
+        isCategoryAvailable(6)) return 6;
+    if (sequenceSelected && rumbleSelected && isCategoryAvailable(2)) return 2;
+    if (sequenceSelected && chanceSelected && isCategoryAvailable(4)) return 4;
+    if (rumbleSelected && chanceSelected && isCategoryAvailable(5)) return 5;
+    if (sequenceSelected && isCategoryAvailable(0)) return 0;
+    if (rumbleSelected && isCategoryAvailable(1)) return 1;
+    if (chanceSelected && isCategoryAvailable(3)) return 3;
+
+    // Default to first available category
+    return availableCombinationCodes.first;
+  }
+
+  // Add this method to determine available categories
+  List<int> get availableCombinationCodes {
+    switch (widget.lotteryCategory) {
+      case '0': // Standard - only sequence
+        return [0];
+      case '1': // Rumble - only sequence
+        return [1];
+      case '2': // Sequence + Rumble
+        return [0, 1, 2];
+      case '3': // Chance only
+        return [3];
+      case '4': // Sequence + Chance
+        return [0, 3, 4];
+      case '5': // Rumble + Chance
+        return [1, 3, 5];
+      case '6': // All types
+        return [0, 1, 2, 3, 4, 5, 6];
+      default:
+        return [0]; // Default to sequence only
+    }
+  }
+
+  // Helper to check if a category is available
+  bool isCategoryAvailable(int code) {
+    return availableCombinationCodes.contains(code);
+  }
+
+
 
   late AnimationController _animationController;
 
@@ -182,32 +238,6 @@ class _LotteryNumberSelectionScreenState
     return true;
   }
 
-  void _navigateToCheckout() {
-    if (DateTime.now().isAfter(endDateTime)) {
-      Get.snackbar(
-        'Lottery Expired',
-        'This lottery draw has ended and cannot be played',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
-      return;
-    }
-
-    if (!_areAllRowsComplete()) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CheckoutScreen(
-          selectedNumbers: selectedNumbersRows,
-          price: widget.price * widget.rowCount,
-          lotteryId: widget.lotteryId,
-        ),
-      ),
-    );
-  }
-
   final LotteryController lotteryController = Get.put(LotteryController());
 
   late final qrScannerService = QRScannerService(lotteryController: lotteryController);
@@ -219,12 +249,16 @@ class _LotteryNumberSelectionScreenState
         children: [
           _buildAppBar(),
           _buildLotteryHeader(),
+          _buildCategorySelection(),
           Expanded(child: _buildNumberSelectionGrid()),
           _buildBottomButtons(),
         ],
       ),
     );
   }
+
+  // Add this new method to build category selection UI
+// Helper method to get combination name
 
   Widget _buildAppBar() {
     return Container(
@@ -608,22 +642,194 @@ class _LotteryNumberSelectionScreenState
     );
   }
 
+
+
+
+// Updated _buildCategorySelection method for horizontal scrolling and compact design
+  Widget _buildCategorySelection() {
+    final canSelectSequence = isCategoryAvailable(0);
+    final canSelectRumble = isCategoryAvailable(1);
+    final canSelectChance = isCategoryAvailable(3);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      height: 60,
+      child: Row(
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Play Type:',
+                style: TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'AED ${totalPrice.toStringAsFixed(0)}',
+                style: TextStyle(
+                  color: AppColors.primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                if (canSelectSequence)
+                  _buildSelectionOption(
+                    'Straight',
+                    sequenceSelected,
+                        (value) {
+                      setState(() {
+                        sequenceSelected = value;
+                        // Ensure at least one category is selected
+                        if (!sequenceSelected && !rumbleSelected && !chanceSelected) {
+                          sequenceSelected = true;
+                        }
+                      });
+                    },
+                  ),
+                if (canSelectSequence && canSelectRumble) const SizedBox(width: 8),
+                if (canSelectRumble)
+                  _buildSelectionOption(
+                    'Rumble',
+                    rumbleSelected,
+                        (value) {
+                      setState(() {
+                        rumbleSelected = value;
+                        if (!sequenceSelected && !rumbleSelected && !chanceSelected) {
+                          // Default to first available category
+                          if (canSelectSequence) {
+                            sequenceSelected = true;
+                          } else if (canSelectRumble) {
+                            rumbleSelected = true;
+                          } else if (canSelectChance) {
+                            chanceSelected = true;
+                          }
+                        }
+                      });
+                    },
+                  ),
+                if ((canSelectSequence || canSelectRumble) && canSelectChance)
+                  const SizedBox(width: 8),
+                if (canSelectChance)
+                  _buildSelectionOption(
+                    'Chance',
+                    chanceSelected,
+                        (value) {
+                      setState(() {
+                        chanceSelected = value;
+                        if (!sequenceSelected && !rumbleSelected && !chanceSelected) {
+                          // Default to first available category
+                          if (canSelectSequence) {
+                            sequenceSelected = true;
+                          } else if (canSelectRumble) {
+                            rumbleSelected = true;
+                          } else if (canSelectChance) {
+                            chanceSelected = true;
+                          }
+                        }
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+// Updated _buildSelectionOption to be more compact
+  Widget _buildSelectionOption(String title, bool isSelected, Function(bool) onChanged) {
+    return InkWell(
+      onTap: () => onChanged(!isSelected),
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppColors.primaryColor.withOpacity(0.1) : Colors.grey.withOpacity(0.05),
+          border: Border.all(
+            color: isSelected ? AppColors.primaryColor : Colors.grey.withOpacity(0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                color: isSelected ? AppColors.primaryColor : Colors.black87,
+              ),
+            ),
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? AppColors.primaryColor : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? AppColors.primaryColor : Colors.grey,
+                  width: 1.5,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(
+                Icons.check,
+                size: 10,
+                color: Colors.white,
+              )
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+// Updated _buildNumberSelectionGrid to maximize space for number picking
   Widget _buildNumberSelectionGrid() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), // Reduced vertical padding
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Pick Your Numbers (Row ${activeRowIndex + 1})',
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Pick Your Numbers (Row ${activeRowIndex + 1})',
+                style: const TextStyle(
+                  color: Colors.black87,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              if (sequenceSelected || rumbleSelected || chanceSelected)
+                Text(
+                  'Combo: ${_getCombinationName(combinationCode)}',
+                  style: TextStyle(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8), // Reduced spacing
           Row(
             children: [
               GestureDetector(
@@ -631,7 +837,7 @@ class _LotteryNumberSelectionScreenState
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 8,
+                    vertical: 6, // Reduced height
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor,
@@ -653,7 +859,7 @@ class _LotteryNumberSelectionScreenState
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 8,
+                    vertical: 6, // Reduced height
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor,
@@ -675,7 +881,7 @@ class _LotteryNumberSelectionScreenState
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 8,
+                    vertical: 6, // Reduced height
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor,
@@ -693,7 +899,7 @@ class _LotteryNumberSelectionScreenState
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8), // Reduced spacing
           Expanded(
             child: GridView.builder(
               physics: const BouncingScrollPhysics(),
@@ -703,7 +909,7 @@ class _LotteryNumberSelectionScreenState
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount: widget.maxNumber+1,
+              itemCount: widget.maxNumber + 1,
               itemBuilder: (context, index) {
                 final number = index;
                 final isSelected = selectedNumbersRows[activeRowIndex].contains(
@@ -719,9 +925,7 @@ class _LotteryNumberSelectionScreenState
                       color: isSelected ? AppColors.primaryColor : Colors.white,
                       border: Border.all(
                         color:
-                            isSelected
-                                ? AppColors.primaryColor
-                                : Colors.grey.shade300,
+                        isSelected ? AppColors.primaryColor : Colors.grey.shade300,
                         width: 1,
                       ),
                     ),
@@ -745,7 +949,65 @@ class _LotteryNumberSelectionScreenState
     );
   }
 
+// Updated _navigateToCheckout method to enforce category selection
+  void _navigateToCheckout() {
+    if (DateTime.now().isAfter(endDateTime)) {
+      Get.snackbar(
+        'Lottery Expired',
+        'This lottery draw has ended and cannot be played',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
 
+    if (!_areAllRowsComplete()) {
+      Get.snackbar(
+        'Incomplete Selection',
+        'Please complete all number selections',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+// Check if at least one available category is selected
+    if (!sequenceSelected && !rumbleSelected && !chanceSelected) {
+      Get.snackbar(
+        'Category Required',
+        'Please select at least one play type',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+      );
+      // Default to first available category
+      setState(() {
+        if (isCategoryAvailable(0)) {
+          sequenceSelected = true;
+        } else if (isCategoryAvailable(1)) {
+          rumbleSelected = true;
+        } else if (isCategoryAvailable(3)) {
+          chanceSelected = true;
+        }
+      });
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutScreen(
+          selectedNumbers: selectedNumbersRows,
+          price: totalPrice, // Use the calculated total price
+          lotteryId: widget.lotteryId,
+          combinationCode: combinationCode,
+        ),
+      ),
+    );
+  }
+
+// Updated _buildBottomButtons to show the calculated price with all selections
   Widget _buildBottomButtons() {
     final bool isExpired = widget.announcedResult == '1';
     return Container(
@@ -812,7 +1074,7 @@ class _LotteryNumberSelectionScreenState
                   child: Text(
                     isExpired
                         ? 'LOTTERY EXPIRED'
-                        : 'NEXT (AED ${(widget.price * widget.rowCount).toInt()})',
+                        : 'NEXT (AED ${totalPrice.toStringAsFixed(0)})',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -828,6 +1090,41 @@ class _LotteryNumberSelectionScreenState
     );
   }
 
+// Updated getter for totalPrice to include all selected categories
+  double get totalPrice {
+    int selectedCategoryCount = 0;
+    if (sequenceSelected && isCategoryAvailable(0)) selectedCategoryCount++;
+    if (rumbleSelected && isCategoryAvailable(1)) selectedCategoryCount++;
+    if (chanceSelected && isCategoryAvailable(3)) selectedCategoryCount++;
 
+    // Ensure at least one available category is selected
+    if (selectedCategoryCount == 0) {
+      if (isCategoryAvailable(0)) {
+        sequenceSelected = true;
+        selectedCategoryCount = 1;
+      } else if (isCategoryAvailable(1)) {
+        rumbleSelected = true;
+        selectedCategoryCount = 1;
+      } else if (isCategoryAvailable(3)) {
+        chanceSelected = true;
+        selectedCategoryCount = 1;
+      }
+    }
+
+    return widget.price * widget.rowCount * selectedCategoryCount;
+  }
+// Helper method to get simplified combination name
+  String _getCombinationName(int code) {
+    switch (code) {
+      case 0: return 'Sequence';
+      case 1: return 'Rumble';
+      case 2: return 'Seq+Rum';
+      case 3: return 'Chance';
+      case 4: return 'Seq+Cha';
+      case 5: return 'Rum+Cha';
+      case 6: return 'All Types';
+      default: return 'Custom';
+    }
+  }
 
 }

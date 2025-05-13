@@ -7,7 +7,6 @@ class TicketDetailsScreen extends StatefulWidget {
   final List<List<int>> selectedNumbersRows;
   final double price;
   final String ticketId;
-  final String verificationCode;
   final String purchaseDateTime;
   final String product;
 
@@ -16,7 +15,6 @@ class TicketDetailsScreen extends StatefulWidget {
     required this.selectedNumbersRows,
     required this.price,
     required this.ticketId,
-    required this.verificationCode,
     required this.purchaseDateTime,
     required this.product,
   });

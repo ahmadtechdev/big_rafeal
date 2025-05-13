@@ -66,8 +66,7 @@ class LotteryController extends GetxController {
   Future<void> fetchLotteries() async {
     try {
       isLoading(true);
-      errorMessage('');
-
+      // print(result);
       final result = await _apiService.fetchLotteries();
       lotteries.value = result;
 
@@ -77,6 +76,8 @@ class LotteryController extends GetxController {
       isLoading(false);
     }
   }
+
+
 
   // Refresh lottery data
   void refreshLotteries() {

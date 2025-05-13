@@ -20,12 +20,14 @@ class CheckoutScreen extends StatefulWidget {
   final List<List<int>> selectedNumbers;
   final double price;
   final int lotteryId;
+  final int combinationCode;
 
   const CheckoutScreen({
     super.key,
     required this.selectedNumbers,
     required this.price,
     required this.lotteryId,
+    required this.combinationCode,
   });
 
   @override
@@ -51,9 +53,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // Get user data
   User? get _currentUser => _userController.currentUser.value;
 
-  String _generateVerificationCode() {
-    return '8093'; // In production, generate a unique code
-  }
 
   String _getCurrentDateTime() {
     final now = DateTime.now();
@@ -64,7 +63,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // If lottery has endDate, use it, otherwise fallback to dummy data
     if (_currentLottery != null) {
       try {
-        final drawDate = DateTime.parse(_currentLottery!.endDate);
+        final drawDate = _currentLottery!.endDate;
         return '${drawDate.day.toString().padLeft(2, '0')}.${drawDate.month.toString().padLeft(2, '0')}.${drawDate.year} ${drawDate.hour.toString().padLeft(2, '0')}:${drawDate.minute.toString().padLeft(2, '0')} ${drawDate.hour >= 12 ? 'PM' : 'AM'}';
       // ignore: empty_catches
       } catch (e) {
@@ -83,26 +82,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       );
     }
   }
-
-  // Generate QR code with lottery code included
-  // Update the _generateQrCode method in CheckoutScreen
-  // Update the QR code generation to ensure better scannability
-  Future<Uint8List> _generateQrCode(String ticketId, int rowIndex) async {
+  Future<Uint8List> _generateQrCode(String ticketId) async {
     try {
-      // Simplify the QR data to make it smaller and more scannable
+      // Simplify the QR data to just the ticket ID
       final qrData = {
-        't': ticketId,       // shorter key names
-        'r': rowIndex,
-        'n': widget.selectedNumbers[rowIndex].join(','), // comma-separated numbers
-        'd': DateTime.now().millisecondsSinceEpoch, // timestamp
-        'l': widget.lotteryId,
+        'ticket_id': ticketId,
       };
 
-      // Use a lower error correction level to make the QR code less dense
       final qrValidationResult = QrValidator.validate(
         data: jsonEncode(qrData),
         version: QrVersions.auto,
-        errorCorrectionLevel: QrErrorCorrectLevel.L, // Changed from M to L (Low)
+        errorCorrectionLevel: QrErrorCorrectLevel.L,
       );
 
       if (qrValidationResult.status != QrValidationStatus.valid) {
@@ -118,22 +108,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         embeddedImage: null,
       );
 
-      // Increase QR code size and add white border
-      final qrImageSize = 250.0; // Increased from 200
+      final qrImageSize = 250.0;
       final pictureRecorder = ui.PictureRecorder();
       final canvas = ui.Canvas(pictureRecorder);
 
-      // Add white background
       canvas.drawRect(
         Rect.fromLTWH(0, 0, qrImageSize, qrImageSize),
         Paint()..color = Colors.white,
       );
 
-      // Draw QR code with padding - we'll scale it down to 80% of the canvas
       final qrPaintSize = qrImageSize * 0.8;
       final qrOffset = qrImageSize * 0.1;
 
-      // Save the canvas state, translate to the offset position, then paint
       canvas.save();
       canvas.translate(qrOffset, qrOffset);
       painter.paint(canvas, Size(qrPaintSize, qrPaintSize));
@@ -168,289 +154,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  // Future<void> _printReceipts() async {
-  //   setState(() {
-  //     _isPrinting = true;
-  //   });
-  //
-  //   try {
-  //     // Generate common data
-  //     final String verificationCode = _generateVerificationCode();
-  //     final String purchaseDateTime = _getCurrentDateTime();
-  //     final String drawDateTime = _getDrawDateTime();
-  //
-  //     // Get lottery name and winning price from lottery model or use defaults
-  //     final String lotteryName = _currentLottery?.lotteryName ?? 'Lot Name';
-  //     final String winningPrice = _currentLottery?.winningPrice ?? '000';
-  //     final String lotteryCode = _currentLottery?.lotteryCode ?? '';
-  //     final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
-  //
-  //     // Get merchant name from user model or use default
-  //     final String merchantName = _currentUser?.name ?? '';
-  //
-  //     // final List<Printer> printers = await Printing.listPrinters();
-  //     //
-  //     // if (printers.isEmpty) {
-  //     //   _showSnackBar('No printers available.');
-  //     //   setState(() {
-  //     //     _isPrinting = false;
-  //     //   });
-  //     //   return;
-  //     // }
-  //     //
-  //     // // Use the first printer in the list as the default
-  //     // final Printer defaultPrinter = printers.first;
-  //
-  //     // Load logos
-  //     final Uint8List? companyLogoData = await _loadCompanyLogo();
-  //     final Uint8List? pencilLogoData = await _loadPencilLogo();
-  //
-  //     // Print a separate receipt for each row of numbers
-  //     for (int i = 0; i < widget.selectedNumbers.length; i++) {
-  //       final List<int> numbers = widget.selectedNumbers[i];
-  //       final String ticketId = "BIGR$lotteryCode";
-  //       final String product = '$lotteryNumbers x $lotteryName';
-  //
-  //       // Generate QR code with lottery code
-  //       final Uint8List qrImageData = await _generateQrCode(ticketId, lotteryCode);
-  //
-  //       // Create PDF document
-  //       final pdf = pw.Document();
-  //
-  //       // Add receipt page - using exact size for POS printer (standard 80mm receipt)
-  //       pdf.addPage(
-  //         pw.Page(
-  //             pageFormat: PdfPageFormat.roll80,
-  //             build: (pw.Context context) {
-  //               return pw.Column(
-  //                 crossAxisAlignment: pw.CrossAxisAlignment.center,
-  //                 children: [
-  //                   // All your receipt content remains the same
-  //                   pw.SizedBox(height: 30),
-  //                   companyLogoData != null
-  //                       ? pw.Image(pw.MemoryImage(companyLogoData), width: 50, height: 50)
-  //                       : pw.Text('BIG RAFEAL',
-  //                       style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-  //                   pw.SizedBox(height: 4),
-  //                   // Info section - improved readability with bold text
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Verification Code:',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                       pw.Text(verificationCode,
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                     ],
-  //                   ),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Price (inc. VAT 5%):',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                       pw.Text('AED 5',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                     ],
-  //                   ),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Purchased:',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                       pw.Text(purchaseDateTime,
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                     ],
-  //                   ),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Product:',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                       pw.Text(product,
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                     ],
-  //                   ),
-  //
-  //                   // Product details
-  //                   pw.SizedBox(height: 5),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Product pencil:',
-  //                           style: pw.TextStyle(fontSize: 9)),
-  //                       pw.Text('3.5 AED',
-  //                           style: pw.TextStyle(fontSize: 9)),
-  //                     ],
-  //                   ),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Tax:',
-  //                           style: pw.TextStyle(fontSize: 9)),
-  //                       pw.Text('1.5 AED',
-  //                           style: pw.TextStyle(fontSize: 9)),
-  //                     ],
-  //                   ),
-  //
-  //                   pw.SizedBox(height: 10),
-  //                   // Pencil logo (if available)
-  //                   pencilLogoData != null
-  //                       ? pw.Image(pw.MemoryImage(pencilLogoData), width: 50, height: 50)
-  //                       : pw.SizedBox(),
-  //                   pw.SizedBox(height: 5),
-  //
-  //                   pw.SizedBox(height: 10),
-  //
-  //                   // Selected numbers - INCREASED SIZE AND BOLD as requested
-  //                   pw.Container(
-  //                     alignment: pw.Alignment.center,
-  //                     margin: const pw.EdgeInsets.symmetric(vertical: 6),
-  //                     child: pw.Wrap(
-  //                       alignment: pw.WrapAlignment.center,
-  //                       spacing: 8,
-  //                       children: numbers.map((number) {
-  //                         return pw.Container(
-  //                           width: 20, // Increased from 16
-  //                           height: 20, // Increased from 16
-  //                           decoration: pw.BoxDecoration(
-  //                             shape: pw.BoxShape.circle,
-  //                             border: pw.Border.all(width: 0.8),
-  //                           ),
-  //                           alignment: pw.Alignment.center,
-  //                           child: pw.Text(
-  //                             number.toString().padLeft(2, '0'),
-  //                             style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold), // Increased from 8 to 12
-  //                           ),
-  //                         );
-  //                       }).toList(),
-  //                     ),
-  //                   ),
-  //
-  //                   pw.SizedBox(height: 8),
-  //
-  //                   // Ticket details - improved with bolder text
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Ticket ID:',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                       pw.Text(ticketId,
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                     ],
-  //                   ),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Merchant Name:',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                       pw.Flexible(
-  //                         child: pw.Text(merchantName,
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-  //                           textAlign: pw.TextAlign.right,
-  //                         ),
-  //                       ),
-  //                     ],
-  //                   ),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.end,
-  //                     children: [
-  //                       pw.Text('PHONES LLC - 03',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                     ],
-  //                   ),
-  //                   pw.Row(
-  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-  //                     children: [
-  //                       pw.Text('Draw Date:',
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                       pw.Text(drawDateTime,
-  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-  //                     ],
-  //                   ),
-  //
-  //                   // Divider and jackpot info
-  //                   pw.Divider(thickness: 1),
-  //                   pw.Text(lotteryName,
-  //                       style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-  //                   pw.Text('GRAND JACKPOT $winningPrice AED',
-  //                       style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-  //                   pw.Divider(thickness: 1),
-  //
-  //                   // QR code - larger for better scanning
-  //                   qrImageData.isNotEmpty
-  //                       ? pw.Image(pw.MemoryImage(qrImageData), width: 80, height: 80)
-  //                       : pw.Container(height: 80, width: 80),
-  //
-  //                   // Footer with company details
-  //                   pw.Text('BIG RAFEAL L.L.C',
-  //                       style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-  //                   pw.Text('For more information,',
-  //                       style: pw.TextStyle(fontSize: 8)),
-  //                   pw.Text('visit www.bigrafeal.info',
-  //                       style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-  //                   pw.Text('or Call us @ 0554691351',
-  //                       style: pw.TextStyle(fontSize: 8)),
-  //                   pw.Text('info@bigrafeal.info',
-  //                       style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-  //                   pw.SizedBox(height: 6),
-  //                   pw.Text('---- Thank You ----',
-  //                       style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-  //
-  //
-  //                   pw.SizedBox(height: 30),
-  //                 ],
-  //               );
-  //             }
-  //         ),
-  //       );
-  //
-  //
-  //       // CHANGED: Print directly without showing preview
-  //       final bytes = await pdf.save();
-  //
-  //
-  //       final result = await Printing.layoutPdf(
-  //         // printer: defaultPrinter, // This will use the default printer
-  //         onLayout: (_) => bytes,
-  //         name: 'BIG_RAFEAL_Ticket_$ticketId.pdf',
-  //         format: PdfPageFormat.roll80,
-  //       );
-  //
-  //       if (!result) {
-  //         // If printing failed, show error message
-  //         _showSnackBar('Failed to print receipt ${i+1}');
-  //         return;
-  //       }
-  //     }
-  //
-  //     _showSnackBar('All receipts printed successfully');
-  //
-  //     // Navigate to ticket details screen after printing (using first row of numbers)
-  //     if (mounted && widget.selectedNumbers.isNotEmpty) {
-  //       final String lotteryCode = _currentLottery?.lotteryCode ?? '';
-  //       Navigator.push(
-  //         context,
-  //         MaterialPageRoute(
-  //           builder: (context) => TicketDetailsScreen(
-  //             selectedNumbersRows: widget.selectedNumbers,
-  //             price: widget.price,
-  //             ticketId: "BIGR$lotteryCode", // First ticket ID
-  //             verificationCode: _generateVerificationCode(),
-  //             purchaseDateTime: _getCurrentDateTime(),
-  //             product: '${widget.selectedNumbers.length} x ${_currentLottery?.lotteryName ?? 'GRAND 6'}',
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     _showSnackBar('Error printing receipts: $e');
-  //     print('Printing error: $e');
-  //   } finally {
-  //     setState(() {
-  //       _isPrinting = false;
-  //     });
-  //   }
-  // }
-
 
   String generateUniqueTicketId() {
     // Get current timestamp in milliseconds
@@ -470,24 +173,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
 
     try {
-      // Generate common data
-      _generateVerificationCode();
-      generateUniqueTicketId();
       final String purchaseDateTime = _getCurrentDateTime();
       final String drawDateTime = _getDrawDateTime();
-
-      // Get lottery name and winning price from lottery model or use defaults
       final String lotteryName = _currentLottery?.lotteryName ?? 'Lot Name';
-      final String winningPrice = _currentLottery?.highestPrize.toString() ?? '000';
-      final String winningNumbers = _currentLottery?.winningNumber ?? '';
+      final String winningPrice = _currentLottery?.maxReward.toString() ?? '000';
       final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
-      final String lotteryCode = _currentLottery?.lotteryCode ?? '';
-      final String endDate = _currentLottery?.endDate ?? '';
-      final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
-
-      // Get merchant name from user model or use default
       final String merchantName = _currentUser?.name ?? '';
       final String shopName = _currentUser?.shopName ?? '';
+      final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
+
 
       final User? user = _currentUser;
       if (user == null) {
@@ -495,47 +189,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         return;
       }
 
-      // Create API service instance
       final ApiService apiService = ApiService();
-
       List<String> ticketIds = [];
 
-      // Save each lottery row
       for (int i = 0; i < widget.selectedNumbers.length; i++) {
         final List<int> numbers = widget.selectedNumbers[i];
-        final String ticketId = "BIGR${generateUniqueTicketId()}";
-        ticketIds.add(ticketId);
-
-        // Format selected numbers for API
         final String selectedNumbersStr = numbers.join(',');
 
-        String winOrLoss ="loss";
-        if(selectedNumbersStr==winningNumbers){
-          winOrLoss="win";
-        }
-        _showSnackBar('Saving lottery ticket ${i+1}/${widget.selectedNumbers.length}');
-
-        // Save to API
         try {
-          await apiService.saveLotterySale(
-              userId: user.id,
-              userName: user.name,
-              userEmail: user.email,
-              userNumber: user.shopName,
-              lotteryName: lotteryName,
-              purchasePrice: purchasePrice,
-              winningPrice: winningPrice,
-              lotteryCode: lotteryCode,
-              endDate: endDate,
-              numberOfLottery: lotteryNumbers,
-              selectedNumbers: selectedNumbersStr,
-              winOrLoss: winOrLoss, ticketId: ticketId
+          // Call the updated API with required fields
+          final response = await apiService.saveLotterySale(
+            userId: user.id,
+            lotteryId: widget.lotteryId,
+            selectedNumbers: selectedNumbersStr,
+            purchasePrice: widget.price,
+            category: widget.combinationCode,
           );
+
+          if (response['success'] == true) {
+            // Get the ticket ID from the response
+            final ticketId = response['ticket']['id'].toString();
+            ticketIds.add(ticketId);
+            _showSnackBar('Saving lottery ticket ${i+1}/${widget.selectedNumbers.length}');
+
+            // Rest of your printing logic...
+            // Make sure to use the ticketId from response for the receipt
+          } else {
+            throw response['message'] ?? 'Failed to save ticket';
+          }
         } catch (e) {
           _showSnackBar('Error saving ticket ${i+1}: $e');
-          // Continue with other tickets even if one fails
         }
       }
+
 
       _showSnackBar('Printing receipts...');
 
@@ -553,7 +239,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final String product = '$lotteryNumbers x $lotteryName';
 
         // Generate QR code with lottery code
-        final Uint8List qrImageData = await _generateQrCode(lotteryCode, i);
+        final Uint8List qrImageData = await _generateQrCode(ticketId);
 
         // Add receipt page to the document
         pdf.addPage(
@@ -570,17 +256,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         : pw.Text('BIG RAFEAL',
                         style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 4),
-
-                    // Info section - improved readability with bold text
-                    // pw.Row(
-                    //   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    //   children: [
-                    //     pw.Text('Verification Code:',
-                    //         style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    //     pw.Text(verificationCode,
-                    //         style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    //   ],
-                    // ),
+                    
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [
@@ -768,14 +444,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // Navigate to ticket details screen after printing
       if (mounted && widget.selectedNumbers.isNotEmpty) {
-        final String lotteryCode = _currentLottery?.lotteryCode ?? '';
+        final Object lotteryCode = _currentLottery?.id ?? '';
 
           Get.offAll(
             () => TicketDetailsScreen(
               selectedNumbersRows: widget.selectedNumbers,
               price: widget.price,
               ticketId: "BIGR$lotteryCode", // First ticket ID
-              verificationCode: _generateVerificationCode(),
               purchaseDateTime: _getCurrentDateTime(),
               product: '${widget.selectedNumbers.length} x ${_currentLottery?.lotteryName ?? 'GRAND 6'}',
             ),

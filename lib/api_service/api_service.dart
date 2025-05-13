@@ -15,6 +15,7 @@ class ApiService {
 
       if (response.statusCode == 200) {
         List<dynamic> lotteryData = response.data['lotteries'];
+
         return lotteryData.map((json) => Lottery.fromJson(json)).toList();
       } else {
         throw 'Failed to load lotteries with status: ${response.statusCode}';
@@ -161,47 +162,23 @@ class ApiService {
       throw 'Failed to load banners: $e';
     }
   }
-
-  // Add to api_service.dart
   Future<Map<String, dynamic>> saveLotterySale({
     required int userId,
-    required String userName,
-    required String userEmail,
-    required String userNumber,
-    required String lotteryName,
-    required String purchasePrice,
-    required String winningPrice,
-    required String lotteryCode,
-    required String endDate,
-    required String numberOfLottery,
+    required int lotteryId,
     required String selectedNumbers,
-    required String ticketId,
-    String winOrLoss = "loss",
+    required double purchasePrice,
+    required int category,
   }) async {
     try {
       final headers = {'Content-Type': 'application/json'};
 
-
-
       final data = json.encode({
         "user_id": userId.toString(),
-        "ticket_id": ticketId,
-        "User_name": userName,
-        "User_email": userEmail,
-        "User_number": userNumber,
-        "lottery_name": lotteryName,
-        "purchase_price": purchasePrice,
-        "winning_price": winningPrice,
-        "image": "", // Default value
-        "lottery_code": lotteryCode,
-        "end_date": endDate,
-        "number_of_lottery": numberOfLottery,
-        "lottery_issue_date": DateTime.now().toIso8601String(),
+        "lottery_id": lotteryId.toString(),
         "selected_numbers": selectedNumbers,
-        "w_or_l": winOrLoss
+        "purchase_price": purchasePrice.toString(),
+        "category": category.toString(),
       });
-
-      // Debug log
 
       final response = await _dio.request(
         '$_baseUrl/add_lottery',
@@ -209,15 +186,9 @@ class ApiService {
         data: data,
       );
 
-      // Debug log
-
       return response.data;
     } on DioException catch (e) {
-      // Debug log
       if (e.response != null) {
-        // Debug log
-        // Debug log
-
         if (e.response!.data is Map) {
           final errorMessage = e.response!.data['message'] ?? 'Sale saving failed';
           throw errorMessage;
@@ -232,8 +203,97 @@ class ApiService {
         throw 'Something went wrong. Please try again later.';
       }
     } catch (e) {
-      // Debug log
       throw 'Sale saving failed: $e';
+    }
+  }
+
+  // In api_service.dart
+  Future<Map<String, dynamic>> fetchSalesReport({
+    required int userId,
+    required String fromDate,
+    required String toDate,
+  }) async {
+    try {
+      final response = await _dio.request(
+        '$_baseUrl/report?user_id=$userId&from_date=$fromDate&to_date=$toDate',
+        options: Options(method: 'POST'),
+      );
+
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw 'Failed to load sales report with status: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw 'Failed to load sales report with status: ${e.response!.statusCode}';
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw 'Connection timed out. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        throw 'Something went wrong. Please try again later.';
+      }
+    } catch (e) {
+      throw 'Failed to load sales report: $e';
+    }
+  }
+  // In api_service.dart
+  Future<List<UserLottery>> fetchUserTickets(int userId) async {
+    try {
+      final response = await _dio.get('$_baseUrl/get-tickets/$userId');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        List<dynamic> ticketData = response.data['tickets'];
+        return ticketData.map((json) => UserLottery.fromJson(json)).toList();
+      } else {
+        throw 'Failed to load tickets: ${response.data['message']}';
+      }
+    } on DioException catch (e) {
+      // Handle Dio specific errors
+      if (e.response != null) {
+        throw 'Failed to load tickets with status: ${e.response!.statusCode}';
+      } else {
+        throw 'Failed to load tickets: ${e.message}';
+      }
+    } catch (e) {
+      throw 'Failed to load tickets: $e';
+    }
+  }
+
+  Future<Map<String, dynamic>> checkTicketResult(String ticketId) async {
+    try {
+      final response = await _dio.request(
+        '$_baseUrl/scan-qr?ticket_id=$ticketId',
+        // '$_baseUrl/scan-qr?ticket_id=36',
+        options: Options(method: 'POST'),
+      );
+
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        // Handle cases where status code is not 200 but still returns valid data
+        if (response.data is Map && response.data.containsKey('success')) {
+          return response.data;
+        }
+        throw 'Failed to check ticket result with status: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        // Handle cases where server returns error responses with data
+        if (e.response!.data is Map && e.response!.data.containsKey('success')) {
+          return e.response!.data;
+        }
+        throw 'Failed to check ticket result with status: ${e.response!.statusCode}';
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw 'Connection timed out. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        throw 'Something went wrong. Please try again later.';
+      }
+    } catch (e) {
+      throw 'Failed to check ticket result: $e';
     }
   }
 

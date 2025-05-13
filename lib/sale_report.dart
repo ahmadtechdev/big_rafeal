@@ -11,7 +11,6 @@ import 'package:printing/printing.dart';
 import '../controllers/user_controller.dart';
 import '../models/user_lottery_modal.dart';
 import '../utils/app_colors.dart';
-import 'controllers/lottery_result_controller.dart';
 import 'controllers/sale_report_controller.dart';
 
 class SalesReportScreen extends StatelessWidget {
@@ -19,6 +18,7 @@ class SalesReportScreen extends StatelessWidget {
     SalesReportController(),
   );
 
+  // ignore: use_super_parameters
   SalesReportScreen({Key? key}) : super(key: key);
 
   String _formatDate(DateTime date) {
@@ -174,7 +174,7 @@ class SalesReportScreen extends StatelessWidget {
                         currentDate.day,
                       );
                     }
-                    _reportController.loadLotteries();
+                    _reportController.loadReport();
                   }
                 },
               ),
@@ -202,7 +202,7 @@ class SalesReportScreen extends StatelessWidget {
                         currentDate.day,
                       );
                     }
-                    _reportController.loadLotteries();
+                    _reportController.loadReport();
                   }
                 },
               ),
@@ -231,7 +231,7 @@ class SalesReportScreen extends StatelessWidget {
                         day,
                       );
                     }
-                    _reportController.loadLotteries();
+                    _reportController.loadReport();
                   }
                 },
               ),
@@ -299,32 +299,27 @@ class SalesReportScreen extends StatelessWidget {
     );
   }
 
+
   Widget _buildSaleItem(UserLottery userLottery, int index) {
-    final resultController = LotteryResultController.instance;
-    final lottery = _reportController.findMatchingLottery(userLottery);
+    final status = userLottery.wOrL.toUpperCase(); // "WIN", "LOSS", or "PENDING"
 
-    // Check results
-    final resultsAvailable = resultController.areResultsAvailable(lottery);
-    double winningAmount = 0;
-    bool isWin = false;
+    final statusColor = switch (status) {
+      'WIN' => Colors.green,
+      'LOSS' => Colors.red,
+      _ => Colors.orange,
+    };
 
-    if (resultsAvailable) {
-      final result = resultController.checkLotteryResult(userLottery, lottery);
-      winningAmount = result.prizeAmount;
-      isWin =
-          result.resultType == ResultType.fullWin ||
-              result.resultType == ResultType.sequenceWin ||
-              result.resultType == ResultType.chanceWin ||
-              result.resultType == ResultType.rumbleWin;
-    }
+    final statusIcon = switch (status) {
+      'WIN' => Icons.emoji_events,
+      'LOSS' => Icons.cancel,
+      _ => Icons.access_time,
+    };
 
-    final statusColor =
-        isWin ? Colors.green : (resultsAvailable ? Colors.red : Colors.orange);
-    final statusText = isWin ? 'WIN' : (resultsAvailable ? 'LOSS' : 'PENDING');
-    final statusIcon =
-        isWin
-            ? Icons.emoji_events
-            : (resultsAvailable ? Icons.cancel : Icons.access_time);
+    final statusText = switch (status) {
+      'WIN' => 'WIN',
+      'LOSS' => 'LOSS',
+      _ => 'PENDING',
+    };
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -358,6 +353,7 @@ class SalesReportScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Title Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -441,9 +437,7 @@ class SalesReportScreen extends StatelessWidget {
                   children: [
                     _buildInfoItem(
                       title: 'Date',
-                      value: _formatDate(
-                        DateTime.parse(userLottery.lotteryIssueDate),
-                      ),
+                      value: _formatDate(DateTime.parse(userLottery.lotteryIssueDate)),
                       icon: Icons.event,
                     ),
                     _buildInfoItem(
@@ -451,21 +445,21 @@ class SalesReportScreen extends StatelessWidget {
                       value: 'AED ${userLottery.purchasePrice}',
                       icon: Icons.shopping_cart,
                     ),
-                    if (resultsAvailable)
-                      _buildInfoItem(
-                        title: 'Winning',
-                        value: 'AED ${winningAmount.toStringAsFixed(2)}',
-                        icon: Icons.monetization_on,
-                        valueColor: isWin ? Colors.green : Colors.red,
-                        isBold: true,
-                      ),
-                    if (!resultsAvailable)
-                      _buildInfoItem(
-                        title: 'Status',
-                        value: 'Pending',
-                        icon: Icons.hourglass_empty,
-                        valueColor: Colors.orange,
-                      ),
+                    _buildInfoItem(
+                      title: status == 'PENDING' ? 'Status' : 'Winning',
+                      value: status == 'PENDING'
+                          ? 'Pending'
+                          : 'AED ${userLottery.winAmount}',
+                      icon: status == 'PENDING'
+                          ? Icons.hourglass_empty
+                          : Icons.monetization_on,
+                      valueColor: status == 'WIN'
+                          ? Colors.green
+                          : status == 'LOSS'
+                          ? Colors.red
+                          : null,
+                      isBold: true,
+                    ),
                   ],
                 ),
               ],
@@ -554,7 +548,7 @@ class SalesReportScreen extends StatelessWidget {
                   const Duration(days: 30),
                 );
                 _reportController.endDate.value = DateTime.now();
-                _reportController.loadLotteries();
+                _reportController.loadReport();
               },
               icon: const Icon(Icons.refresh),
               label: const Text('View Last 30 Days'),
@@ -686,15 +680,7 @@ class SalesReportScreen extends StatelessWidget {
                       ),
                     ),
                     pw.Text(
-                      '${_reportController.filteredLotteries.where((l) {
-                        final lottery = _reportController.findMatchingLottery(l);
-                        final resultController = LotteryResultController.instance;
-                        if (resultController.areResultsAvailable(lottery)) {
-                          final result = resultController.checkLotteryResult(l, lottery);
-                          return result.prizeAmount > 0;
-                        }
-                        return false;
-                      }).length}',
+                      '${_reportController.filteredLotteries.where((l) => l.wOrL == 'WIN').length}',
                       style: pw.TextStyle(
                         fontSize: 9,
                         fontWeight: pw.FontWeight.bold,
@@ -1029,7 +1015,7 @@ class SalesReportScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: () => _reportController.loadLotteries(),
+                  onPressed: () => _reportController.loadReport(),
                   icon: const Icon(Icons.refresh),
                   label: const Text('Retry'),
                   style: ElevatedButton.styleFrom(
@@ -1043,7 +1029,7 @@ class SalesReportScreen extends StatelessWidget {
         } else {
           return RefreshIndicator(
             onRefresh: () async {
-              _reportController.loadLotteries();
+              _reportController.loadReport();
             },
             color: AppColors.primaryColor,
             child: SingleChildScrollView(

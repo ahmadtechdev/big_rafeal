@@ -141,7 +141,7 @@ class _BannerCarouselState extends State<BannerCarousel> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            widget.activeLottery.highestPrize.toString(),
+                            widget.activeLottery.maxReward.toString(),
                             style: TextStyle(
                               fontSize: 25,
                               fontWeight: FontWeight.bold,
