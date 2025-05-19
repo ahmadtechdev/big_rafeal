@@ -32,7 +32,7 @@ class UserLottery {
   factory UserLottery.fromJson(Map<String, dynamic> json) {
     return UserLottery(
       id: json['id'] ?? 0,
-      userId: json['user_id'] ?? 0,
+      userId: int.parse(json['user_id']),
       lotteryId: json['lottery_id']?.toString() ?? '',
       ticketId: json['ticket_id']?.toString() ?? '',
       lotteryName: json['lottery_name'] ?? '',
@@ -43,7 +43,7 @@ class UserLottery {
       selectedNumbers: json['selected_numbers'] ?? '',
       wOrL: json['w_or_l'] ?? 'LOSS',
       endDate: json['end_date'] ?? '',
-      category: json['category']?.toString(),
+      category: json['category']?.toString() ?? '',
     );
   }
 

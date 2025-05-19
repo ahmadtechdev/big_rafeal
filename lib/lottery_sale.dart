@@ -232,7 +232,6 @@ class LotteryHistoryScreen extends StatelessWidget {
   Widget _buildLotteryCard(UserLottery lottery, int index) {
     final isWin = lottery.wOrL == 'WIN';
     final isLoss = lottery.wOrL == 'LOSS';
-    final isPending = lottery.wOrL == 'PENDING';
 
     final statusColor = isWin
         ? Colors.green
@@ -303,14 +302,7 @@ class LotteryHistoryScreen extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Ticket ID: ${lottery.ticketId}',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                          ),
+
                         ],
                       ),
                     ),

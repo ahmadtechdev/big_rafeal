@@ -155,8 +155,7 @@ class LotteryCardsScreen extends StatelessWidget {
 
   bool _isLotteryExpired(Lottery lottery) {
     // Lottery is expired if result is announced or end date has passed
-    return lottery.announcedResult == 1 ||
-        lottery.endDate.isBefore(DateTime.now());
+    return lottery.announcedResult == 1 ;
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {

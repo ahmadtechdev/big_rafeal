@@ -21,6 +21,9 @@ class CheckoutScreen extends StatefulWidget {
   final double price;
   final int lotteryId;
   final int combinationCode;
+  final bool sequence;
+  final bool rumble;
+  final bool chance;
 
   const CheckoutScreen({
     super.key,
@@ -28,6 +31,9 @@ class CheckoutScreen extends StatefulWidget {
     required this.price,
     required this.lotteryId,
     required this.combinationCode,
+    required this.sequence,
+    required this.rumble,
+    required this.chance,
   });
 
   @override
@@ -256,7 +262,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         : pw.Text('BIG RAFEAL',
                         style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 4),
-                    
+
+                    // Add selected categories here
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.center,
+                      children: [
+                        if (widget.sequence)
+                          pw.Container(
+                            margin: const pw.EdgeInsets.only(right: 8),
+                            child: pw.Text('SEQUENCE ',
+                                style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          ),
+                        if (widget.rumble)
+                          pw.Container(
+                            margin: const pw.EdgeInsets.only(right: 8),
+                            child: pw.Text('RUMBLE ',
+                                style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          ),
+                        if (widget.chance)
+                          pw.Text('CHANCE ',
+                              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 8),
+
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                       children: [

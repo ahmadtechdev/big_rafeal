@@ -65,7 +65,9 @@ class _LotteryNumberSelectionScreenState
   int get combinationCode {
     // If all available categories are selected, return the combined code
     if (sequenceSelected && rumbleSelected && chanceSelected &&
-        isCategoryAvailable(6)) return 6;
+        isCategoryAvailable(6)) {
+      return 6;
+    }
     if (sequenceSelected && rumbleSelected && isCategoryAvailable(2)) return 2;
     if (sequenceSelected && chanceSelected && isCategoryAvailable(4)) return 4;
     if (rumbleSelected && chanceSelected && isCategoryAvailable(5)) return 5;
@@ -108,7 +110,6 @@ class _LotteryNumberSelectionScreenState
 
   late AnimationController _animationController;
 
-  @override
   @override
   void initState() {
     super.initState();
@@ -177,21 +178,21 @@ class _LotteryNumberSelectionScreenState
 
   void _quickPick() {
     setState(() {
-      List<int> availableNumbers = List.generate( widget.maxNumber, (index) => index + 1);
+      final startNumber = widget.maxNumber < 10 ? 0 : 1;
+      List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
       availableNumbers.shuffle();
-      selectedNumbersRows[activeRowIndex] =
-          availableNumbers.take(widget.numbersPerRow).toList();
+      selectedNumbersRows[activeRowIndex] = availableNumbers.take(widget.numbersPerRow).toList();
     });
     _animationController.forward(from: 0.0);
   }
 
   void _quickPickAll() {
     setState(() {
+      final startNumber = widget.maxNumber < 10 ? 0 : 1;
       for (int i = 0; i < selectedNumbersRows.length; i++) {
-        List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + 1);
+        List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
         availableNumbers.shuffle();
-        selectedNumbersRows[i] =
-            availableNumbers.take(widget.numbersPerRow).toList();
+        selectedNumbersRows[i] = availableNumbers.take(widget.numbersPerRow).toList();
       }
     });
     _animationController.forward(from: 0.0);
@@ -642,9 +643,6 @@ class _LotteryNumberSelectionScreenState
     );
   }
 
-
-
-
 // Updated _buildCategorySelection method for horizontal scrolling and compact design
   Widget _buildCategorySelection() {
     final canSelectSequence = isCategoryAvailable(0);
@@ -801,9 +799,12 @@ class _LotteryNumberSelectionScreenState
 
 // Updated _buildNumberSelectionGrid to maximize space for number picking
   Widget _buildNumberSelectionGrid() {
+    final startNumber = widget.maxNumber < 10 ? 0 : 1;
+    final itemCount = widget.maxNumber < 10 ? widget.maxNumber + 1 : widget.maxNumber;
+
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), // Reduced vertical padding
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -829,7 +830,7 @@ class _LotteryNumberSelectionScreenState
                 ),
             ],
           ),
-          const SizedBox(height: 8), // Reduced spacing
+          const SizedBox(height: 8),
           Row(
             children: [
               GestureDetector(
@@ -837,7 +838,7 @@ class _LotteryNumberSelectionScreenState
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 6, // Reduced height
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor,
@@ -859,7 +860,7 @@ class _LotteryNumberSelectionScreenState
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 6, // Reduced height
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor,
@@ -881,7 +882,7 @@ class _LotteryNumberSelectionScreenState
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 6, // Reduced height
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor,
@@ -899,7 +900,7 @@ class _LotteryNumberSelectionScreenState
               ),
             ],
           ),
-          const SizedBox(height: 8), // Reduced spacing
+          const SizedBox(height: 8),
           Expanded(
             child: GridView.builder(
               physics: const BouncingScrollPhysics(),
@@ -909,12 +910,10 @@ class _LotteryNumberSelectionScreenState
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
               ),
-              itemCount: widget.maxNumber + 1,
+              itemCount: itemCount,
               itemBuilder: (context, index) {
-                final number = index;
-                final isSelected = selectedNumbersRows[activeRowIndex].contains(
-                  number,
-                );
+                final number = index + startNumber;
+                final isSelected = selectedNumbersRows[activeRowIndex].contains(number);
 
                 return GestureDetector(
                   onTap: () => _selectNumber(number),
@@ -924,8 +923,7 @@ class _LotteryNumberSelectionScreenState
                       shape: BoxShape.circle,
                       color: isSelected ? AppColors.primaryColor : Colors.white,
                       border: Border.all(
-                        color:
-                        isSelected ? AppColors.primaryColor : Colors.grey.shade300,
+                        color: isSelected ? AppColors.primaryColor : Colors.grey.shade300,
                         width: 1,
                       ),
                     ),
@@ -1002,6 +1000,10 @@ class _LotteryNumberSelectionScreenState
           price: totalPrice, // Use the calculated total price
           lotteryId: widget.lotteryId,
           combinationCode: combinationCode,
+          sequence: sequenceSelected,
+          chance: chanceSelected,
+          rumble: rumbleSelected,
+
         ),
       ),
     );
@@ -1092,26 +1094,32 @@ class _LotteryNumberSelectionScreenState
 
 // Updated getter for totalPrice to include all selected categories
   double get totalPrice {
-    int selectedCategoryCount = 0;
-    if (sequenceSelected && isCategoryAvailable(0)) selectedCategoryCount++;
-    if (rumbleSelected && isCategoryAvailable(1)) selectedCategoryCount++;
-    if (chanceSelected && isCategoryAvailable(3)) selectedCategoryCount++;
+    // For lotteries with numberLottery > 5, price doesn't increase with category selection
+    if (widget.numbersPerRow > 5) {
+      return widget.price ;
+    } else {
+      // Original pricing logic for lotteries with numberLottery <= 5
+      int selectedCategoryCount = 0;
+      if (sequenceSelected && isCategoryAvailable(0)) selectedCategoryCount++;
+      if (rumbleSelected && isCategoryAvailable(1)) selectedCategoryCount++;
+      if (chanceSelected && isCategoryAvailable(3)) selectedCategoryCount++;
 
-    // Ensure at least one available category is selected
-    if (selectedCategoryCount == 0) {
-      if (isCategoryAvailable(0)) {
-        sequenceSelected = true;
-        selectedCategoryCount = 1;
-      } else if (isCategoryAvailable(1)) {
-        rumbleSelected = true;
-        selectedCategoryCount = 1;
-      } else if (isCategoryAvailable(3)) {
-        chanceSelected = true;
-        selectedCategoryCount = 1;
+      // Ensure at least one available category is selected
+      if (selectedCategoryCount == 0) {
+        if (isCategoryAvailable(0)) {
+          sequenceSelected = true;
+          selectedCategoryCount = 1;
+        } else if (isCategoryAvailable(1)) {
+          rumbleSelected = true;
+          selectedCategoryCount = 1;
+        } else if (isCategoryAvailable(3)) {
+          chanceSelected = true;
+          selectedCategoryCount = 1;
+        }
       }
-    }
 
-    return widget.price * widget.rowCount * selectedCategoryCount;
+      return widget.price * selectedCategoryCount;
+    }
   }
 // Helper method to get simplified combination name
   String _getCombinationName(int code) {

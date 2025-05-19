@@ -149,13 +149,13 @@ class QRScannerService {
 
       // Parse QR data
       final Map<String, dynamic>? qrDataMap = _parseQrData(qrData);
-      if (qrDataMap == null || qrDataMap['ticket_id']!.toString().isEmpty ?? true) {
+      if (qrDataMap == null || qrDataMap['ticket_id']!.toString().isEmpty) {
         Get.back(); // Close loading dialog
         Get.snackbar('Invalid QR Code', 'The scanned QR code is not valid');
         return;
       }
 
-      final String? ticketId = qrDataMap?['ticket_id']!.toString();
+      final String ticketId = qrDataMap['ticket_id']!.toString();
 
       // Handle the API call
       final response = await apiService.checkTicketResult(ticketId!);
@@ -243,6 +243,9 @@ class QRScannerService {
 
     final selectedNumbers = _parseNumbers(response['selected_numbers']);
     final winningNumbers = _parseNumbers(response['winning_numbers']);
+    final sequenceMatched = response['sequence_matched'];
+    final rumbleMatched = response['rumble_matched'];
+    final chanceMatched =response['chance_matched'];
 
     if (selectedNumbers.isEmpty || winningNumbers.isEmpty) {
       Get.snackbar('Error', 'Invalid number data');
@@ -266,6 +269,14 @@ class QRScannerService {
       selectedNumbers.length,
       selectedNumbers,
       winningNumbers,
+      sequenceMatched,
+      rumbleMatched,
+      chanceMatched,
+        response['sequence_win_amount']??"",
+        response['rumble_win_amount']??"",
+        response['chance_win_amount']??"",
+
+
     );
   }
   // Helper to close loading dialog and show error
@@ -294,7 +305,6 @@ class QRScannerService {
     if (response['isRumbleMatch'] == true) return ResultType.rumbleWin;
     return ResultType.loss;
   }
-
   // Show error dialog safely
   void _showErrorDialog(BuildContext context, String title, String message) {
     showDialog(
@@ -410,6 +420,12 @@ class QRScannerService {
       int totalNumbers,
       List<int> selectedNumbers,
       List<int> winningNumbers,
+      int seq,
+      int rum,
+      int cha,
+      String seqWin,
+      String rumWin,
+      String chaWin
       ) {
     final bool isFullWin = result.resultType == ResultType.fullWin;
     final bool hasSequenceWin = result.isSequenceMatch;
@@ -421,30 +437,34 @@ class QRScannerService {
     Color resultColor;
     String resultMessage;
 
-    if (isFullWin) {
-      resultTitle = 'JACKPOT WINNER!';
-      resultColor = Colors.green[600]!;
-      resultMessage = 'You matched all $totalNumbers numbers!\nYou won AED ${result.prizeAmount}!';
-    } else if (hasSequenceWin && hasRumbleWin) {
+   if (hasSequenceWin && hasRumbleWin && hasChanceWin) {
+      resultTitle = 'SEQUENCE, CHANCE & RUMBLE WIN!';
+      resultColor = Colors.blue[600]!;
+      resultMessage = 'Sequence x ${seq.toString()} = $seqWin AED\nRumble x ${rum.toString()} = $rumWin AED\nChance x ${cha.toString()} = $chaWin AED\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+    }else if (hasSequenceWin && hasRumbleWin) {
       resultTitle = 'SEQUENCE & RUMBLE WIN!';
       resultColor = Colors.blue[600]!;
-      resultMessage = 'You matched ${result.matchCount} sequence numbers!\nPlus ${result.matchCount} rumble matches!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      resultMessage = 'Sequence x ${seq.toString()} = $seqWin AED\nRumble x ${rum.toString()} = $rumWin AED\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
     } else if (hasChanceWin && hasRumbleWin) {
       resultTitle = 'CHANCE & RUMBLE WIN!';
       resultColor = Colors.purple[600]!;
-      resultMessage = 'You matched ${result.matchCount} chance numbers!\nPlus ${result.matchCount} rumble matches!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      resultMessage = 'Chance x ${cha.toString()} = $chaWin AED\nRumble x ${rum.toString()} = $rumWin AED\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+    }else if (hasSequenceWin && hasChanceWin) {
+      resultTitle = 'SEQUENCE & CHANCE WIN!';
+      resultColor = Colors.purple[600]!;
+      resultMessage = 'Sequence x ${seq.toString()} = $seqWin AED\nChance x ${cha.toString()} = $chaWin AED\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
     } else if (hasSequenceWin) {
       resultTitle = 'SEQUENCE WIN!';
       resultColor = Colors.blue[600]!;
-      resultMessage = 'You matched ${result.matchCount} sequence numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      resultMessage = 'Sequence x ${seq.toString()} = $seqWin AED\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
     } else if (hasChanceWin) {
       resultTitle = 'CHANCE WIN!';
       resultColor = Colors.purple[600]!;
-      resultMessage = 'You matched ${result.matchCount} chance numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      resultMessage = 'Chance x ${cha.toString()} = $chaWin AED\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
     } else if (hasRumbleWin) {
       resultTitle = 'RUMBLE WIN!';
       resultColor = Colors.orange[600]!;
-      resultMessage = 'You matched ${result.matchCount} numbers in any order!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      resultMessage = 'Rumble x ${rum.toString()} = $rumWin AED\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!';
     } else {
       resultTitle = 'BETTER LUCK NEXT TIME!';
       resultColor = Colors.red[600]!;
@@ -524,15 +544,15 @@ class QRScannerService {
                         spacing: 8,
                         runSpacing: 8,
                         children: selectedNumbers.map((number) {
-                          final isMatched = winningNumbers.contains(number);
+                          winningNumbers.contains(number);
                           return Container(
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: isMatched ? Colors.green[100] : Colors.red[100],
+                              color: Colors.orange[100],
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: isMatched ? Colors.green : Colors.red,
+                                color: Colors.orange,
                                 width: 2,
                               ),
                             ),
@@ -542,7 +562,7 @@ class QRScannerService {
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: isMatched ? Colors.green[800] : Colors.red[800],
+                                  color: Colors.orange[800],
                                 ),
                               ),
                             ),
@@ -595,7 +615,7 @@ class QRScannerService {
                     children: [
                       ElevatedButton(
                         onPressed: () {
-                          _printResultReceipt(result, lottery, selectedNumbers, winningNumbers);
+                          _printResultReceipt(result, lottery, selectedNumbers, winningNumbers, seq, rum, cha, seqWin, rumWin, chaWin);
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey[800],
@@ -861,10 +881,15 @@ class QRScannerService {
       Lottery lottery,
       List<int> selectedNumbers,
       List<int> winningNumbers,
+      int seq,
+      int rum,
+      int cha,
+      String seqWin,
+      String rumWin,
+      String chaWin
       ) async {
     try {
       // Show printing indicator
-
       Get.snackbar("Printing", "Preparing receipt for printing...");
 
       // Create PDF document
@@ -880,25 +905,52 @@ class QRScannerService {
       final bool hasChanceWin = result.resultType == ResultType.chanceWin;
       final bool hasRumbleWin = result.resultType == ResultType.rumbleWin;
 
-      final String resultStatus = isFullWin
-          ? 'JACKPOT WINNER!'
-          : hasSequenceWin
-          ? 'SEQUENCE WIN!'
-          : hasChanceWin
-          ? 'CHANCE WIN!'
-          : hasRumbleWin
-          ? 'RUMBLE WIN!'
-          : 'NO WIN';
+      final int totalNumbers = selectedNumbers.length;
 
-      final String resultDetails = isFullWin
-          ? 'You matched all ${selectedNumbers.length} numbers!\nYou won AED ${result.prizeAmount}!'
-          : hasSequenceWin
-          ? 'You matched ${result.matchCount} sequence numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
-          : hasChanceWin
-          ? 'You matched ${result.matchCount} chance numbers!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
-          : hasRumbleWin
-          ? 'You matched ${result.matchCount} numbers in any order!\nYou won AED ${result.prizeAmount.toStringAsFixed(2)}!'
-          : 'Better luck next time!';
+      // Determine result status and details based on all possible combinations
+      String resultStatus;
+      String resultDetails;
+
+      if (isFullWin) {
+        resultStatus = 'JACKPOT WINNER!';
+        resultDetails = 'You matched all $totalNumbers numbers!\nYou won AED ${result.prizeAmount}!';
+      } else if (hasSequenceWin && hasRumbleWin && hasChanceWin) {
+        resultStatus = 'SEQUENCE, CHANCE & RUMBLE WIN!';
+        resultDetails = 'Sequence x ${seq.toString()} = $seqWin AED\n'
+            'Rumble x ${rum.toString()} = $rumWin AED\n'
+            'Chance x ${cha.toString()} = $chaWin AED\n'
+            'You won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      } else if (hasSequenceWin && hasRumbleWin) {
+        resultStatus = 'SEQUENCE & RUMBLE WIN!';
+        resultDetails = 'Sequence x ${seq.toString()} = $seqWin AED\n'
+            'Rumble x ${rum.toString()} = $rumWin AED\n'
+            'You won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      } else if (hasChanceWin && hasRumbleWin) {
+        resultStatus = 'CHANCE & RUMBLE WIN!';
+        resultDetails = 'Chance x ${cha.toString()} = $chaWin AED\n'
+            'Rumble x ${rum.toString()} = $rumWin AED\n'
+            'You won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      } else if (hasSequenceWin && hasChanceWin) {
+        resultStatus = 'SEQUENCE & CHANCE WIN!';
+        resultDetails = 'Sequence x ${seq.toString()} = $seqWin AED\n'
+            'Chance x ${cha.toString()} = $chaWin AED\n'
+            'You won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      } else if (hasSequenceWin) {
+        resultStatus = 'SEQUENCE WIN!';
+        resultDetails = 'Sequence x ${seq.toString()} = $seqWin AED\n'
+            'You won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      } else if (hasChanceWin) {
+        resultStatus = 'CHANCE WIN!';
+        resultDetails = 'Chance x ${cha.toString()} = $chaWin AED\n'
+            'You won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      } else if (hasRumbleWin) {
+        resultStatus = 'RUMBLE WIN!';
+        resultDetails = 'Rumble x ${rum.toString()} = $rumWin AED\n'
+            'You won AED ${result.prizeAmount.toStringAsFixed(2)}!';
+      } else {
+        resultStatus = 'BETTER LUCK NEXT TIME!';
+        resultDetails = 'Try again for a chance to win big!';
+      }
 
       // Add receipt page to the document
       pdf.addPage(
@@ -994,26 +1046,62 @@ class QRScannerService {
                   ),
 
                   pw.SizedBox(height: 12),
-                  // Match details
-                  (isFullWin || hasSequenceWin || hasChanceWin || hasRumbleWin) ? pw.Column(
+                  // Prize breakdown section
+                  (isFullWin || hasSequenceWin || hasChanceWin || hasRumbleWin)
+                      ? pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('PRIZE DETAILS',
+                        pw.Text('PRIZE BREAKDOWN:',
                             style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                         pw.SizedBox(height: 4),
-                        pw.Text(
-                          isFullWin
-                              ? 'Full Match - AED ${result.prizeAmount}'
-                              : hasSequenceWin
-                              ? 'Sequence Match - AED ${result.prizeAmount.toStringAsFixed(2)}'
-                              : hasChanceWin
-                              ? 'Chance Match - AED ${result.prizeAmount.toStringAsFixed(2)}'
-                              : 'Rumble Match - AED ${result.prizeAmount.toStringAsFixed(2)}',
-                          style: pw.TextStyle(fontSize: 9),
-                        ),
-                        pw.Text('Matched Numbers: ${result.matchCount}',
-                            style: pw.TextStyle(fontSize: 9)),
+                        if (isFullWin)
+                          pw.Text('Full Match: AED ${result.prizeAmount}',
+                              style: pw.TextStyle(fontSize: 9)),
+                        if (hasSequenceWin && hasRumbleWin && hasChanceWin)
+                          pw.Column(children: [
+                            pw.Text('Sequence x$seq: $seqWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                            pw.Text('Rumble x$rum: $rumWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                            pw.Text('Chance x$cha: $chaWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                          ]),
+                        if (hasSequenceWin && hasRumbleWin && !hasChanceWin)
+                          pw.Column(children: [
+                            pw.Text('Sequence x$seq: $seqWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                            pw.Text('Rumble x$rum: $rumWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                          ]),
+                        if (hasChanceWin && hasRumbleWin)
+                          pw.Column(children: [
+                            pw.Text('Chance x$cha: $chaWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                            pw.Text('Rumble x$rum: $rumWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                          ]),
+                        if (hasSequenceWin && hasChanceWin)
+                          pw.Column(children: [
+                            pw.Text('Sequence x$seq: $seqWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                            pw.Text('Chance x$cha: $chaWin AED',
+                                style: pw.TextStyle(fontSize: 9)),
+                          ]),
+                        if (hasSequenceWin && !hasRumbleWin && !hasChanceWin)
+                          pw.Text('Sequence x$seq: $seqWin AED',
+                              style: pw.TextStyle(fontSize: 9)),
+                        if (hasChanceWin && !hasRumbleWin && !hasSequenceWin)
+                          pw.Text('Chance x$cha: $chaWin AED',
+                              style: pw.TextStyle(fontSize: 9)),
+                        if (hasRumbleWin && !hasChanceWin && !hasSequenceWin)
+                          pw.Text('Rumble x$rum: $rumWin AED',
+                              style: pw.TextStyle(fontSize: 9)),
+                        pw.SizedBox(height: 4),
+                        pw.Text('TOTAL PRIZE: AED ${result.prizeAmount.toStringAsFixed(2)}',
+                            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                       ]
-                  ) : pw.SizedBox(),
+                  )
+                      : pw.SizedBox(),
 
                   pw.Divider(thickness: 1),
                   // Footer
@@ -1045,18 +1133,14 @@ class QRScannerService {
 
       Get.snackbar("Printing", "Receipt printed successfully");
     } catch (e) {
-      print('Error printing result receipt: $e');
-
       Get.snackbar("Printing", "Error printing receipt: $e'");
     }
   }
-
   Future<Uint8List?> _loadCompanyLogo() async {
     try {
       final ByteData data = await rootBundle.load('assets/logo2.png');
       return data.buffer.asUint8List();
     } catch (e) {
-      print('Error loading company logo: $e');
       return null;
     }
   }
@@ -1281,6 +1365,8 @@ class ScannerOverlayPainter extends CustomPainter {
 
 // Animated scanner line
 class ScannerAnimation extends StatefulWidget {
+  const ScannerAnimation({super.key});
+
   @override
   _ScannerAnimationState createState() => _ScannerAnimationState();
 }
