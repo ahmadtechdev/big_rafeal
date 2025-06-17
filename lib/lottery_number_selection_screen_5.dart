@@ -50,7 +50,7 @@ class _LotteryNumberSelectionScreenState
   int hours = 0;
   int minutes = 7;
   int seconds = 27;
-  late Timer _timer;
+  Timer? _timer;
   late DateTime endDateTime;
   Duration timeLeft = Duration.zero;
 
@@ -117,16 +117,16 @@ class _LotteryNumberSelectionScreenState
       selectedNumbersRows.add([]);
     }
 
-    // Parse the end date
-    endDateTime = DateTime.parse(widget.endDate);
+    // Parse the end date with format handling
+    endDateTime = _parseDate(widget.endDate);
 
-    // Calculate initial time left
-    _updateTimeLeft();
-
-    // Start timer
+    // Initialize timer
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       _updateTimeLeft();
     });
+
+    // Calculate initial time
+    _updateTimeLeft();
 
     _animationController = AnimationController(
       vsync: this,
@@ -134,27 +134,45 @@ class _LotteryNumberSelectionScreenState
     );
   }
 
+  // Helper method to parse both date formats
+  DateTime _parseDate(String dateString) {
+
+    try {
+      // First try parsing as ISO format (with T)
+      return DateTime.parse(dateString);
+    } catch (e) {
+      try {
+        // If that fails, try replacing space with T for SQL-style format
+        if (dateString.contains(' ')) {
+          return DateTime.parse(dateString.replaceFirst(' ', 'T'));
+        }
+        // If neither works, fallback to current time + 1 day
+        return DateTime.now().add(const Duration(days: 1));
+      } catch (e) {
+        // Ultimate fallback
+        return DateTime.now().add(const Duration(days: 1));
+      }
+    }
+  }
+
   void _updateTimeLeft() {
     final now = DateTime.now();
     if (now.isAfter(endDateTime)) {
       timeLeft = Duration.zero;
-      _timer.cancel();
+      _timer?.cancel();
+      if (mounted) setState(() {});
     } else {
       timeLeft = endDateTime.difference(now);
-    }
-
-    if (mounted) {
-      setState(() {});
+      if (mounted) setState(() {});
     }
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     _animationController.dispose();
     super.dispose();
   }
-
 
   void _selectNumber(int number) {
     setState(() {
