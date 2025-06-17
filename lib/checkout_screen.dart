@@ -62,7 +62,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   // Get user data
   User? get _currentUser => _userController.currentUser.value;
 
-
+  PrinterStatus statusPrinter = PrinterStatus.UNKNOWN;
   String _getCurrentDateTime() {
     final now = DateTime.now();
     return '${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}.${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}';
@@ -497,6 +497,405 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   //   }
   // }
 
+  // Future<void> _printReceipts() async {
+  //   setState(() {
+  //     _isPrinting = true;
+  //   });
+  //
+  //   try {
+  //     final String purchaseDateTime = _getCurrentDateTime();
+  //     final String drawDateTime = _getDrawDateTime();
+  //     final String lotteryName = _currentLottery?.lotteryName ?? 'Lot Name';
+  //     final String winningPrice = _currentLottery?.maxReward.toString() ?? '000';
+  //     final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
+  //     final String merchantName = _currentUser?.name ?? '';
+  //     final String shopName = _currentUser?.shopName ?? '';
+  //     final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
+  //
+  //     final User? user = _currentUser;
+  //     if (user == null) {
+  //       _showSnackBar('User information not available');
+  //       return;
+  //     }
+  //
+  //     final ApiService apiService = ApiService();
+  //     List<String> ticketIds = [];
+  //
+  //     // First save all tickets to the API
+  //     for (int i = 0; i < widget.selectedNumbers.length; i++) {
+  //       final List<int> numbers = widget.selectedNumbers[i];
+  //       final String selectedNumbersStr = numbers.join(',');
+  //
+  //       try {
+  //         final response = await apiService.saveLotterySale(
+  //           userId: user.id,
+  //           lotteryId: widget.lotteryId,
+  //           selectedNumbers: selectedNumbersStr,
+  //           purchasePrice: widget.price,
+  //           category: widget.combinationCode,
+  //         );
+  //
+  //         if (response['success'] == true) {
+  //           final ticketId = response['ticket']['id'].toString();
+  //           ticketIds.add(ticketId);
+  //           _showSnackBar('Saving lottery ticket ${i+1}/${widget.selectedNumbers.length}');
+  //         } else {
+  //           throw response['message'] ?? 'Failed to save ticket';
+  //         }
+  //       } catch (e) {
+  //         _showSnackBar('Error saving ticket ${i+1}: $e');
+  //         return; // Don't proceed with printing if saving fails
+  //       }
+  //     }
+  //
+  //     _showSnackBar('Printing receipts...');
+  //
+  //     // Try printing with Sunmi printer first
+  //     bool sunmiPrintSuccess = false;
+  //     try {
+  //       // Initialize Sunmi printer
+  //       bool? isConnected = await SunmiPrinter.bindingPrinter();
+  //       if (isConnected == true) {
+  //         await SunmiPrinter.initPrinter();
+  //         await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+  //
+  //         // Print each ticket
+  //         for (int i = 0; i < widget.selectedNumbers.length; i++) {
+  //           final List<int> numbers = widget.selectedNumbers[i];
+  //           final String ticketId = ticketIds[i];
+  //
+  //           // Print header
+  //           await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+  //           await SunmiPrinter.printText('BIG RAFEAL', style: SunmiTextStyle(bold: true, fontSize: 32));
+  //           await SunmiPrinter.printText('\n');
+  //
+  //           // Print categories
+  //           String categories = '';
+  //           if (widget.sequence) categories += 'SEQUENCE ';
+  //           if (widget.rumble) categories += 'RUMBLE ';
+  //           if (widget.chance) categories += 'CHANCE ';
+  //           if (categories.isNotEmpty) {
+  //             await SunmiPrinter.printText(categories, style: SunmiTextStyle(bold: true));
+  //             await SunmiPrinter.printText('\n');
+  //           }
+  //
+  //           // Print details
+  //           await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
+  //           await SunmiPrinter.printText('Price (inc. VAT 5%): AED $purchasePrice', style: SunmiTextStyle(bold: true));
+  //           await SunmiPrinter.printText('Purchased: $purchaseDateTime', style: SunmiTextStyle(bold: true));
+  //           await SunmiPrinter.printText('Product: $lotteryNumbers x $lotteryName', style: SunmiTextStyle(bold: true));
+  //
+  //           // Print numbers
+  //           await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+  //           await SunmiPrinter.printText('\n');
+  //           String numbersStr = numbers.map((n) => n.toString().padLeft(2, '0')).join('  ');
+  //           await SunmiPrinter.printText(numbersStr, style: SunmiTextStyle(bold: true, fontSize: 28));
+  //           await SunmiPrinter.printText('\n');
+  //
+  //           // Print ticket info
+  //           await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
+  //           await SunmiPrinter.printText('Ticket ID: $ticketId', style: SunmiTextStyle(bold: true));
+  //           await SunmiPrinter.printText('Merchant: $merchantName', style: SunmiTextStyle(bold: true));
+  //           await SunmiPrinter.printText('Shop: $shopName', style: SunmiTextStyle(bold: true));
+  //           await SunmiPrinter.printText('Draw Date: $drawDateTime', style: SunmiTextStyle(bold: true));
+  //
+  //           // Print footer
+  //           await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+  //           await SunmiPrinter.printText('----------------------------');
+  //           await SunmiPrinter.printText('GRAND JACKPOT $winningPrice AED', style: SunmiTextStyle(bold: true));
+  //           await SunmiPrinter.printText('----------------------------');
+  //           await SunmiPrinter.printText('BIG RAFEAL L.L.C', style: SunmiTextStyle(bold: true));
+  //           await SunmiPrinter.printText('www.bigrafeal.info');
+  //           await SunmiPrinter.printText('info@bigrafeal.info');
+  //           await SunmiPrinter.printText('---- Thank You ----', style: SunmiTextStyle(bold: true));
+  //
+  //           // Add separator between tickets if not last one
+  //           if (i < widget.selectedNumbers.length - 1) {
+  //             await SunmiPrinter.printText('\n\n----------------------------\n\n');
+  //           } else {
+  //             await SunmiPrinter.printText('\n\n');
+  //           }
+  //         }
+  //
+  //         // Feed paper and cut
+  //         await SunmiPrinter.lineWrap(3);
+  //         await SunmiPrinter.cut();
+  //
+  //         sunmiPrintSuccess = true;
+  //       }
+  //     } catch (e) {
+  //       _showSnackBar('Sunmi printer error: $e');
+  //       sunmiPrintSuccess = false;
+  //     }
+  //
+  //     // If Sunmi printing failed, fall back to PDF printing
+  //     if (!sunmiPrintSuccess) {
+  //       _showSnackBar('Falling back to PDF printing...');
+  //
+  //       // Load logos
+  //       final Uint8List? companyLogoData = await _loadCompanyLogo();
+  //       final Uint8List? pencilLogoData = await _loadPencilLogo();
+  //
+  //       // Create a single PDF document for all receipts
+  //       final pdf = pw.Document();
+  //
+  //       // Add all receipts to the same document (same as your existing code)
+  //       for (int i = 0; i < widget.selectedNumbers.length; i++) {
+  //         final List<int> numbers = widget.selectedNumbers[i];
+  //         final String ticketId = ticketIds[i];
+  //         final String product = '$lotteryNumbers x $lotteryName';
+  //
+  //         // Generate QR code with lottery code
+  //         final Uint8List qrImageData = await _generateQrCode(ticketId);
+  //
+  //         // Add receipt page to the document (same as your existing code)
+  //         pdf.addPage(
+  //           pw.Page(
+  //             pageFormat: PdfPageFormat.roll80,
+  //             build: (pw.Context context) {
+  //               return pw.Column(
+  //                 crossAxisAlignment: pw.CrossAxisAlignment.center,
+  //                 children: [
+  //                   pw.SizedBox(height: 30),
+  //                   // Header with logo - increased size
+  //                   companyLogoData != null
+  //                       ? pw.Image(pw.MemoryImage(companyLogoData), width: 100, height: 50)
+  //                       : pw.Text('BIG RAFEAL',
+  //                       style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+  //                   pw.SizedBox(height: 4),
+  //
+  //                   // Add selected categories here
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.center,
+  //                     children: [
+  //                       if (widget.sequence)
+  //                         pw.Container(
+  //                           margin: const pw.EdgeInsets.only(right: 8),
+  //                           child: pw.Text('SEQUENCE ',
+  //                               style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+  //                         ),
+  //                       if (widget.rumble)
+  //                         pw.Container(
+  //                           margin: const pw.EdgeInsets.only(right: 8),
+  //                           child: pw.Text('RUMBLE ',
+  //                               style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+  //                         ),
+  //                       if (widget.chance)
+  //                         pw.Text('CHANCE ',
+  //                             style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+  //                     ],
+  //                   ),
+  //                   pw.SizedBox(height: 8),
+  //
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Price (inc. VAT 5%):',
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                       pw.Text('AED $purchasePrice',
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                     ],
+  //                   ),
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Purchased:',
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                       pw.Text(purchaseDateTime,
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                     ],
+  //                   ),
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Product:',
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                       pw.Text(product,
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                     ],
+  //                   ),
+  //
+  //                   // Product details
+  //                   pw.SizedBox(height: 5),
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Product pencil:',
+  //                           style: pw.TextStyle(fontSize: 9)),
+  //                       pw.Text('${int.parse(purchasePrice)/5} x 3.5 AED',
+  //                           style: pw.TextStyle(fontSize: 9)),
+  //                     ],
+  //                   ),
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Tax:',
+  //                           style: pw.TextStyle(fontSize: 9)),
+  //                       pw.Text('1.5 AED',
+  //                           style: pw.TextStyle(fontSize: 9)),
+  //                     ],
+  //                   ),
+  //
+  //                   pw.SizedBox(height: 10),
+  //                   // Pencil logo (if available)
+  //                   pencilLogoData != null
+  //                       ? pw.Image(pw.MemoryImage(pencilLogoData), width: 50, height: 50)
+  //                       : pw.SizedBox(),
+  //                   pw.SizedBox(height: 5),
+  //
+  //                   pw.SizedBox(height: 10),
+  //
+  //                   // Selected numbers - INCREASED SIZE AND BOLD as requested
+  //                   pw.Container(
+  //                     alignment: pw.Alignment.center,
+  //                     margin: const pw.EdgeInsets.symmetric(vertical: 6),
+  //                     child: pw.Wrap(
+  //                       alignment: pw.WrapAlignment.center,
+  //                       spacing: 8,
+  //                       children: numbers.map((number) {
+  //                         return pw.Container(
+  //                           width: 20, // Increased from 16
+  //                           height: 20, // Increased from 16
+  //                           decoration: pw.BoxDecoration(
+  //                             shape: pw.BoxShape.circle,
+  //                             border: pw.Border.all(width: 0.8),
+  //                           ),
+  //                           alignment: pw.Alignment.center,
+  //                           child: pw.Text(
+  //                             number.toString().padLeft(2, '0'),
+  //                             style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold), // Increased from 8 to 12
+  //                           ),
+  //                         );
+  //                       }).toList(),
+  //                     ),
+  //                   ),
+  //
+  //                   pw.SizedBox(height: 8),
+  //
+  //                   // Ticket details - improved with bolder text
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Ticket ID:',
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                       pw.Text(ticketId,
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                     ],
+  //                   ),
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Merchant Name:',
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                       pw.Flexible(
+  //                         child: pw.Text(merchantName,
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+  //                           textAlign: pw.TextAlign.right,
+  //                         ),
+  //                       ),
+  //                     ],
+  //                   ),
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.end,
+  //                     children: [
+  //                       pw.Text(shopName,
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                     ],
+  //                   ),
+  //                   pw.Row(
+  //                     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+  //                     children: [
+  //                       pw.Text('Draw Date:',
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                       pw.Text(drawDateTime,
+  //                           style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+  //                     ],
+  //                   ),
+  //
+  //                   // Divider and jackpot info
+  //                   pw.Divider(thickness: 1),
+  //                   pw.Text(lotteryName,
+  //                       style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+  //                   pw.Text('GRAND JACKPOT $winningPrice AED',
+  //                       style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+  //                   pw.Divider(thickness: 1),
+  //
+  //                   // QR code - larger for better scanning
+  //                   qrImageData.isNotEmpty
+  //                       ? pw.Container(
+  //                       width: 100,
+  //                       height: 100,
+  //                       color: PdfColors.white,
+  //                       child: pw.Image(pw.MemoryImage(qrImageData))
+  //                   )
+  //                       : pw.Container(height: 100, width: 100),
+  //
+  //                   // Footer with company details
+  //                   pw.Text('BIG RAFEAL L.L.C',
+  //                       style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+  //                   pw.Text('For more information,',
+  //                       style: pw.TextStyle(fontSize: 8)),
+  //                   pw.Text('visit www.bigrafeal.info',
+  //                       style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+  //                   // pw.Text('or Call us @ 0554691351',
+  //                   //     style: pw.TextStyle(fontSize: 8)),
+  //                   pw.Text('info@bigrafeal.info',
+  //                       style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+  //                   pw.SizedBox(height: 6),
+  //                   pw.Text('---- Thank You ----',
+  //                       style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+  //
+  //                   // Add cut line between receipts if not the last receipt
+  //                   i < widget.selectedNumbers.length - 1
+  //                       ? pw.Column(
+  //                     children: [
+  //                       pw.SizedBox(height: 10),
+  //                       pw.Text('--------------------------------',
+  //                           style: pw.TextStyle(fontSize: 8)),
+  //                       pw.SizedBox(height: 10),
+  //                     ],
+  //                   )
+  //                       : pw.SizedBox(height: 30),
+  //                 ],
+  //               );
+  //             },
+  //           ),
+  //         );
+  //       }
+  //
+  //       // Print entire document once
+  //       await Printing.layoutPdf(
+  //         onLayout: (PdfPageFormat format) async => pdf.save(),
+  //         name: 'BIG_RAFEAL_Tickets.pdf',
+  //         format: PdfPageFormat.roll80,
+  //       );
+  //     }
+  //
+  //     _showSnackBar('All receipts printed successfully');
+  //
+  //     // Navigate to ticket details screen after printing
+  //     if (mounted && widget.selectedNumbers.isNotEmpty) {
+  //       final Object lotteryCode = _currentLottery?.id ?? '';
+  //
+  //       Get.offAll(
+  //             () => TicketDetailsScreen(
+  //           selectedNumbersRows: widget.selectedNumbers,
+  //           price: widget.price,
+  //           ticketId: "BIGR$lotteryCode",
+  //           purchaseDateTime: _getCurrentDateTime(),
+  //           product: '${widget.selectedNumbers.length} x ${_currentLottery?.lotteryName ?? 'GRAND 6'}',
+  //         ),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     _showSnackBar('Error printing receipts: $e');
+  //   } finally {
+  //     setState(() {
+  //       _isPrinting = false;
+  //     });
+  //   }
+  // }
+
   Future<void> _printReceipts() async {
     setState(() {
       _isPrinting = true;
@@ -553,79 +952,128 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Try printing with Sunmi printer first
       bool sunmiPrintSuccess = false;
       try {
-        // Initialize Sunmi printer
-        bool? isConnected = await SunmiPrinter.bindingPrinter();
-        if (isConnected == true) {
+        _showSnackBar('Attempting to connect to Sunmi printer...');
+
+        // Check if running on Sunmi device first
+        bool isSunmiDevice = false;
+        try {
+          // Try to get printer status to check if it's a Sunmi device
+          // await StatusController();
+          isSunmiDevice = true;
+        } catch (e) {
+          _showSnackBar('Not a Sunmi device or printer service unavailable: $e');
+          isSunmiDevice = false;
+        }
+
+        if (isSunmiDevice) {
+          // Initialize printer first
+          _showSnackBar('Initializing Sunmi printer...');
           await SunmiPrinter.initPrinter();
-          await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
 
-          // Print each ticket
-          for (int i = 0; i < widget.selectedNumbers.length; i++) {
-            final List<int> numbers = widget.selectedNumbers[i];
-            final String ticketId = ticketIds[i];
+          // Small delay to ensure initialization
+          await Future.delayed(Duration(milliseconds: 500));
 
-            // Print header
-            await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
-            await SunmiPrinter.printText('BIG RAFEAL', style: SunmiTextStyle(bold: true, fontSize: 32));
-            await SunmiPrinter.printText('\n');
+          // Check printer binding status
+          bool? isConnected = await SunmiPrinter.bindingPrinter();
+          _showSnackBar('Sunmi printer binding status: ${isConnected == true ? "Connected" : "Not Connected"}');
 
-            // Print categories
-            String categories = '';
-            if (widget.sequence) categories += 'SEQUENCE ';
-            if (widget.rumble) categories += 'RUMBLE ';
-            if (widget.chance) categories += 'CHANCE ';
-            if (categories.isNotEmpty) {
-              await SunmiPrinter.printText(categories, style: SunmiTextStyle(bold: true));
-              await SunmiPrinter.printText('\n');
+          if (isConnected == true) {
+            // Check printer status
+            try {
+              // int printerStatus = await SunmiPrinter.getPrinterStatus();
+              // String statusMessage = _getPrinterStatusMessage(printerStatus);
+              // _showSnackBar('Sunmi printer status: $statusMessage');
+
+              // Only proceed if printer is ready
+              if (true) { // Printer is normal
+                // Print each ticket
+                for (int i = 0; i < widget.selectedNumbers.length; i++) {
+                  _showSnackBar('Printing ticket ${i+1}/${widget.selectedNumbers.length}');
+
+                  final List<int> numbers = widget.selectedNumbers[i];
+                  final String ticketId = ticketIds[i];
+
+                  // Print header
+                  await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+                  await SunmiPrinter.printText('BIG RAFEAL', style: SunmiTextStyle(bold: true, fontSize: 32));
+                  await SunmiPrinter.lineWrap(1);
+
+                  // Print categories
+                  String categories = '';
+                  if (widget.sequence) categories += 'SEQUENCE ';
+                  if (widget.rumble) categories += 'RUMBLE ';
+                  if (widget.chance) categories += 'CHANCE ';
+                  if (categories.isNotEmpty) {
+                    await SunmiPrinter.printText(categories.trim(), style: SunmiTextStyle(bold: true, fontSize: 18));
+                    await SunmiPrinter.lineWrap(1);
+                  }
+
+                  // Print details
+                  await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
+                  await SunmiPrinter.printText('Price (inc. VAT 5%): AED $purchasePrice', style: SunmiTextStyle(bold: true, fontSize: 14));
+                  await SunmiPrinter.printText('Purchased: $purchaseDateTime', style: SunmiTextStyle(bold: true, fontSize: 14));
+                  await SunmiPrinter.printText('Product: $lotteryNumbers x $lotteryName', style: SunmiTextStyle(bold: true, fontSize: 14));
+
+                  // Print numbers
+                  await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+                  await SunmiPrinter.lineWrap(1);
+                  String numbersStr = numbers.map((n) => n.toString().padLeft(2, '0')).join('  ');
+                  await SunmiPrinter.printText(numbersStr, style: SunmiTextStyle(bold: true, fontSize: 28));
+                  await SunmiPrinter.lineWrap(1);
+
+                  // Print ticket info
+                  await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
+                  await SunmiPrinter.printText('Ticket ID: $ticketId', style: SunmiTextStyle(bold: true, fontSize: 14));
+                  await SunmiPrinter.printText('Merchant: $merchantName', style: SunmiTextStyle(bold: true, fontSize: 14));
+                  await SunmiPrinter.printText('Shop: $shopName', style: SunmiTextStyle(bold: true, fontSize: 14));
+                  await SunmiPrinter.printText('Draw Date: $drawDateTime', style: SunmiTextStyle(bold: true, fontSize: 14));
+
+                  // Print footer
+                  await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+                  await SunmiPrinter.printText('----------------------------', style: SunmiTextStyle(fontSize: 16));
+                  await SunmiPrinter.printText('GRAND JACKPOT $winningPrice AED', style: SunmiTextStyle(bold: true, fontSize: 18));
+                  await SunmiPrinter.printText('----------------------------', style: SunmiTextStyle(fontSize: 16));
+                  await SunmiPrinter.printText('BIG RAFEAL L.L.C', style: SunmiTextStyle(bold: true, fontSize: 16));
+                  await SunmiPrinter.printText('www.bigrafeal.info', style: SunmiTextStyle(fontSize: 14));
+                  await SunmiPrinter.printText('info@bigrafeal.info', style: SunmiTextStyle(fontSize: 14));
+                  await SunmiPrinter.printText('---- Thank You ----', style: SunmiTextStyle(bold: true, fontSize: 16));
+
+                  // Add separator between tickets if not last one
+                  if (i < widget.selectedNumbers.length - 1) {
+                    await SunmiPrinter.lineWrap(2);
+                    await SunmiPrinter.printText('----------------------------', style: SunmiTextStyle(fontSize: 16));
+                    await SunmiPrinter.lineWrap(2);
+                  } else {
+                    await SunmiPrinter.lineWrap(3);
+                  }
+                }
+
+                // Feed paper and cut
+                _showSnackBar('Finalizing print job...');
+                await SunmiPrinter.cutPaper();
+
+                sunmiPrintSuccess = true;
+                _showSnackBar('Sunmi printing completed successfully!');
+              } else {
+                // _showSnackBar('Printer is not ready. Status: $statusMessage');
+                // throw Exception('Printer not ready: $statusMessage');
+              }
+            } catch (e) {
+              _showSnackBar('Error checking printer status: $e');
+              throw e;
             }
-
-            // Print details
-            await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
-            await SunmiPrinter.printText('Price (inc. VAT 5%): AED $purchasePrice', style: SunmiTextStyle(bold: true));
-            await SunmiPrinter.printText('Purchased: $purchaseDateTime', style: SunmiTextStyle(bold: true));
-            await SunmiPrinter.printText('Product: $lotteryNumbers x $lotteryName', style: SunmiTextStyle(bold: true));
-
-            // Print numbers
-            await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
-            await SunmiPrinter.printText('\n');
-            String numbersStr = numbers.map((n) => n.toString().padLeft(2, '0')).join('  ');
-            await SunmiPrinter.printText(numbersStr, style: SunmiTextStyle(bold: true, fontSize: 28));
-            await SunmiPrinter.printText('\n');
-
-            // Print ticket info
-            await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
-            await SunmiPrinter.printText('Ticket ID: $ticketId', style: SunmiTextStyle(bold: true));
-            await SunmiPrinter.printText('Merchant: $merchantName', style: SunmiTextStyle(bold: true));
-            await SunmiPrinter.printText('Shop: $shopName', style: SunmiTextStyle(bold: true));
-            await SunmiPrinter.printText('Draw Date: $drawDateTime', style: SunmiTextStyle(bold: true));
-
-            // Print footer
-            await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
-            await SunmiPrinter.printText('----------------------------');
-            await SunmiPrinter.printText('GRAND JACKPOT $winningPrice AED', style: SunmiTextStyle(bold: true));
-            await SunmiPrinter.printText('----------------------------');
-            await SunmiPrinter.printText('BIG RAFEAL L.L.C', style: SunmiTextStyle(bold: true));
-            await SunmiPrinter.printText('www.bigrafeal.info');
-            await SunmiPrinter.printText('info@bigrafeal.info');
-            await SunmiPrinter.printText('---- Thank You ----', style: SunmiTextStyle(bold: true));
-
-            // Add separator between tickets if not last one
-            if (i < widget.selectedNumbers.length - 1) {
-              await SunmiPrinter.printText('\n\n----------------------------\n\n');
-            } else {
-              await SunmiPrinter.printText('\n\n');
-            }
+          } else {
+            _showSnackBar('Sunmi printer binding failed. Will fall back to PDF printing.');
+            throw Exception('Printer binding failed');
           }
-
-          // Feed paper and cut
-          await SunmiPrinter.lineWrap(3);
-          await SunmiPrinter.cut();
-
-          sunmiPrintSuccess = true;
+        } else {
+          _showSnackBar('Not running on Sunmi device. Will fall back to PDF printing.');
+          throw Exception('Not a Sunmi device');
         }
       } catch (e) {
         _showSnackBar('Sunmi printer error: $e');
         sunmiPrintSuccess = false;
+        print('Sunmi printer debug error: $e'); // Add debug log
       }
 
       // If Sunmi printing failed, fall back to PDF printing
@@ -639,7 +1087,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // Create a single PDF document for all receipts
         final pdf = pw.Document();
 
-        // Add all receipts to the same document (same as your existing code)
+        // Add all receipts to the same document
         for (int i = 0; i < widget.selectedNumbers.length; i++) {
           final List<int> numbers = widget.selectedNumbers[i];
           final String ticketId = ticketIds[i];
@@ -648,7 +1096,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           // Generate QR code with lottery code
           final Uint8List qrImageData = await _generateQrCode(ticketId);
 
-          // Add receipt page to the document (same as your existing code)
+          // Add receipt page to the document
           pdf.addPage(
             pw.Page(
               pageFormat: PdfPageFormat.roll80,
@@ -864,6 +1312,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
 
         // Print entire document once
+        _showSnackBar('Printing PDF document...');
         await Printing.layoutPdf(
           onLayout: (PdfPageFormat format) async => pdf.save(),
           name: 'BIG_RAFEAL_Tickets.pdf',
@@ -871,7 +1320,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       }
 
-      _showSnackBar('All receipts printed successfully');
+      _showSnackBar('All receipts processed successfully');
 
       // Navigate to ticket details screen after printing
       if (mounted && widget.selectedNumbers.isNotEmpty) {
@@ -888,11 +1337,39 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       }
     } catch (e) {
-      _showSnackBar('Error printing receipts: $e');
+      _showSnackBar('Error processing receipts: $e');
     } finally {
       setState(() {
         _isPrinting = false;
       });
+    }
+  }
+
+// Helper method to get printer status message
+  String _getPrinterStatusMessage(int status) {
+    switch (status) {
+      case 0:
+        return "Printer is normal";
+      case 1:
+        return "Printer is out of paper";
+      case 2:
+        return "Printer is overheating";
+      case 3:
+        return "Printer is busy";
+      case 4:
+        return "Printer cover is open";
+      case 5:
+        return "Printer cutter error";
+      case 6:
+        return "Printer cutter recovery error";
+      case 7:
+        return "Printer is not detected";
+      case 8:
+        return "Printer firmware upgrade error";
+      case 9:
+        return "Unknown error";
+      default:
+        return "Unknown status: $status";
     }
   }
 
