@@ -149,16 +149,22 @@ class QRScannerService {
 
       // Parse QR data
       final Map<String, dynamic>? qrDataMap = _parseQrData(qrData);
-      if (qrDataMap == null || qrDataMap['ticket_id']!.toString().isEmpty) {
+      if (qrDataMap == null || qrDataMap['receipt_id']!.toString().isEmpty) {
         Get.back(); // Close loading dialog
         Get.snackbar('Invalid QR Code', 'The scanned QR code is not valid');
         return;
       }
 
-      final String ticketId = qrDataMap['ticket_id']!.toString();
+      final String ticketId = qrDataMap['receipt_id']!.toString();
+
+      print("Ahjkasf");
+      print(ticketId);
 
       // Handle the API call
-      final response = await apiService.checkTicketResult(ticketId!);
+      final response = await apiService.checkTicketResult(ticketId);
+
+      print("recot response");
+      print(response);
 
       // Close loading dialog
       Get.back();

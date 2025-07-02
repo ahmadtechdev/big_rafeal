@@ -168,6 +168,8 @@ class ApiService {
     required String selectedNumbers,
     required double purchasePrice,
     required int category,
+    required String uniqueId,
+    int? cancel,
   }) async {
     try {
       final headers = {'Content-Type': 'application/json'};
@@ -178,6 +180,8 @@ class ApiService {
         "selected_numbers": selectedNumbers,
         "purchase_price": purchasePrice.toString(),
         "category": category.toString(),
+        "uniqueID": uniqueId,
+        if (cancel != null) 'cancel': cancel.toString(),
       });
 
       final response = await _dio.request(
@@ -264,7 +268,7 @@ class ApiService {
   Future<Map<String, dynamic>> checkTicketResult(String ticketId) async {
     try {
       final response = await _dio.request(
-        '$_baseUrl/scan-qr?ticket_id=$ticketId',
+        '$_baseUrl/scan-qr?order_id=$ticketId',
         // '$_baseUrl/scan-qr?ticket_id=36',
         options: Options(method: 'POST'),
       );
