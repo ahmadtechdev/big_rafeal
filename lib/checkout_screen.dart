@@ -185,6 +185,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
       final String merchantName = _currentUser?.name ?? '';
       final String shopName = _currentUser?.shopName ?? '';
+      // final String shopAddress = _currentUser?.address ?? '';
+      final String shopAddress = "Address";
       final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
 
       final User? user = _currentUser;
@@ -212,7 +214,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             selectedNumbers: selectedNumbersStr,
             purchasePrice: widget.price,
             category: widget.combinationCode,
-            uniqueId: uniqueReceiptId, // Send the same unique ID for all rows
+            uniqueId: uniqueReceiptId,
           );
 
           if (response['success'] == true) {
@@ -222,7 +224,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           }
         } catch (e) {
           _showSnackBar('Error saving ticket ${i+1}: $e');
-          return; // Don't proceed with printing if saving fails
+          return;
         }
       }
 
@@ -233,7 +235,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       try {
         _showSnackBar('Attempting to connect to Sunmi printer...');
 
-        // Check if running on Sunmi device first
         bool isSunmiDevice = false;
         try {
           isSunmiDevice = true;
@@ -243,83 +244,125 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
 
         if (isSunmiDevice) {
-          // Initialize printer first
           _showSnackBar('Initializing Sunmi printer...');
           await SunmiPrinter.initPrinter();
-
-          // Small delay to ensure initialization
           await Future.delayed(Duration(milliseconds: 500));
 
-          // Check printer binding status
           bool? isConnected = await SunmiPrinter.bindingPrinter();
           _showSnackBar('Sunmi printer binding status: ${isConnected == true ? "Connected" : "Not Connected"}');
 
           if (isConnected == true) {
-            if (true) { // Printer is normal
-              // Print ONE receipt with ALL selected numbers
-              _showSnackBar('Printing single receipt with all numbers...');
+            _showSnackBar('Printing single receipt with all numbers...');
 
-              // Print header
-              await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
-              await SunmiPrinter.printText('BIG RAFEAL', style: SunmiTextStyle(bold: true, fontSize: 32));
-              await SunmiPrinter.lineWrap(1);
+            // Print header with logo
+            await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+            await SunmiPrinter.printText('BIG RAFEAL', style: SunmiTextStyle(bold: true, fontSize: 32));
+            await SunmiPrinter.lineWrap(1);
 
-              // Print categories
-              String categories = '';
-              if (widget.sequence) categories += 'STRAIGHT ';
-              if (widget.rumble) categories += 'RUMBLE ';
-              if (widget.chance) categories += 'CHANCE ';
-              if (categories.isNotEmpty) {
-                await SunmiPrinter.printText(categories.trim(), style: SunmiTextStyle(bold: true, fontSize: 18));
+            // Website link
+            await SunmiPrinter.printText('https://bigrafeal.info/', style: SunmiTextStyle(bold: true, fontSize: 14));
+            await SunmiPrinter.lineWrap(1);
+
+            // Promotional text
+            await SunmiPrinter.printText('Buy our Products and get a free', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('entry to play our game', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.lineWrap(2);
+
+            // Tax Invoice (underlined)
+            await SunmiPrinter.printText('Tax Invoice', style: SunmiTextStyle(bold: true, fontSize: 16));
+            await SunmiPrinter.printText('________________', style: SunmiTextStyle(bold: true, fontSize: 14));
+            await SunmiPrinter.lineWrap(1);
+
+            // Receipt details
+            await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
+            await SunmiPrinter.printText('TRN NO        : $uniqueReceiptId', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Invoice No    : ${widget.selectedNumbers.length}', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Sale Date     : $purchaseDateTime', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Price         : AED $purchasePrice', style: SunmiTextStyle(bold: true, fontSize: 12));
+
+            // Calculate VAT details
+            double totalPrice = double.parse(purchasePrice);
+            double vatRate = 0.05; // 5%
+            double priceWithoutVat = totalPrice / (1 + vatRate);
+            double vatAmount = totalPrice - priceWithoutVat;
+
+            await SunmiPrinter.printText('VAT%          : 5%', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('VAT 5%        : AED ${vatAmount.toStringAsFixed(2)}', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Total Inc. Vat: AED $purchasePrice', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.lineWrap(2);
+
+            // Ticket Details (underlined)
+            await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+            await SunmiPrinter.printText('Ticket Details', style: SunmiTextStyle(bold: true, fontSize: 16));
+            await SunmiPrinter.printText('________________', style: SunmiTextStyle(bold: true, fontSize: 14));
+            await SunmiPrinter.lineWrap(1);
+
+            // Game details
+            await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
+            await SunmiPrinter.printText('Game Mode     : $lotteryName', style: SunmiTextStyle(bold: true, fontSize: 12));
+
+            // Ticket type based on categories
+            String ticketType = '';
+            if (widget.sequence) ticketType += 'Straight ';
+            if (widget.rumble) ticketType += 'Rumble ';
+            if (widget.chance) ticketType += 'Chance ';
+            if (ticketType.isEmpty) ticketType = widget.combinationCode as String;
+
+            await SunmiPrinter.printText('Ticket Type   : ${ticketType.trim()}', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.lineWrap(1);
+
+            // Print ALL selected numbers
+            await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+            for (int i = 0; i < widget.selectedNumbers.length; i++) {
+              final List<int> numbers = widget.selectedNumbers[i];
+              String numbersStr = numbers.map((n) => n.toString().padLeft(2, '0')).join('  ');
+              await SunmiPrinter.printText(numbersStr, style: SunmiTextStyle(bold: true, fontSize: 24));
+              if (i < widget.selectedNumbers.length - 1) {
                 await SunmiPrinter.lineWrap(1);
               }
-
-              // Print details
-              await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
-              await SunmiPrinter.printText('Price (inc. VAT 5%): AED $purchasePrice', style: SunmiTextStyle(bold: true, fontSize: 14));
-              await SunmiPrinter.printText('Purchased: $purchaseDateTime', style: SunmiTextStyle(bold: true, fontSize: 14));
-              await SunmiPrinter.printText('Product: $lotteryNumbers x $lotteryName', style: SunmiTextStyle(bold: true, fontSize: 14));
-
-              // Print ALL numbers row by row
-              await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
-              await SunmiPrinter.lineWrap(1);
-
-              for (int i = 0; i < widget.selectedNumbers.length; i++) {
-                final List<int> numbers = widget.selectedNumbers[i];
-                String numbersStr = numbers.map((n) => n.toString().padLeft(2, '0')).join('  ');
-                await SunmiPrinter.printText(numbersStr, style: SunmiTextStyle(bold: true, fontSize: 24));
-                if (i < widget.selectedNumbers.length - 1) {
-                  await SunmiPrinter.lineWrap(1);
-                }
-              }
-              await SunmiPrinter.lineWrap(1);
-
-              // Print receipt info (using unique receipt ID)
-              await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
-              await SunmiPrinter.printText('Receipt ID: $uniqueReceiptId', style: SunmiTextStyle(bold: true, fontSize: 14));
-              await SunmiPrinter.printText('Merchant: $merchantName', style: SunmiTextStyle(bold: true, fontSize: 14));
-              await SunmiPrinter.printText('Shop: $shopName', style: SunmiTextStyle(bold: true, fontSize: 14));
-              await SunmiPrinter.printText('Draw Date: $drawDateTime', style: SunmiTextStyle(bold: true, fontSize: 14));
-
-              // Print footer
-              await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
-              await SunmiPrinter.printText('----------------------------', style: SunmiTextStyle(fontSize: 16));
-              await SunmiPrinter.printText('GRAND JACKPOT $winningPrice AED', style: SunmiTextStyle(bold: true, fontSize: 18));
-              await SunmiPrinter.printText('----------------------------', style: SunmiTextStyle(fontSize: 16));
-              await SunmiPrinter.printText('BIG RAFEAL L.L.C', style: SunmiTextStyle(bold: true, fontSize: 16));
-              await SunmiPrinter.printText('www.bigrafeal.info', style: SunmiTextStyle(fontSize: 14));
-              await SunmiPrinter.printText('info@bigrafeal.info', style: SunmiTextStyle(fontSize: 14));
-              await SunmiPrinter.printText('---- Thank You ----', style: SunmiTextStyle(bold: true, fontSize: 16));
-
-              await SunmiPrinter.lineWrap(3);
-
-              // Feed paper and cut
-              _showSnackBar('Finalizing print job...');
-              await SunmiPrinter.cutPaper();
-
-              sunmiPrintSuccess = true;
-              _showSnackBar('Sunmi printing completed successfully!');
             }
+            await SunmiPrinter.lineWrap(2);
+
+            // Shop Details (underlined)
+            await SunmiPrinter.printText('Point of Sales Details', style: SunmiTextStyle(bold: true, fontSize: 16));
+            await SunmiPrinter.printText('________________', style: SunmiTextStyle(bold: true, fontSize: 14));
+            await SunmiPrinter.lineWrap(1);
+
+            // Shop information
+            await SunmiPrinter.setAlignment(SunmiPrintAlign.LEFT);
+            await SunmiPrinter.printText('Vendor Name   : $merchantName', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Vendor        : $shopName', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Address       : $shopAddress', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.lineWrap(2);
+
+            // QR Code placeholder (since we can't print actual QR with Sunmi easily)
+            await SunmiPrinter.setAlignment(SunmiPrintAlign.CENTER);
+            await SunmiPrinter.printText('[QR CODE HERE]', style: SunmiTextStyle(bold: true, fontSize: 14));
+            await SunmiPrinter.lineWrap(2);
+
+            // QR instruction text (not bold)
+            await SunmiPrinter.printText('To claim your reward scan this QR code', style: SunmiTextStyle(bold: false, fontSize: 12));
+            await SunmiPrinter.printText('at the point of sale where you made', style: SunmiTextStyle(bold: false, fontSize: 12));
+            await SunmiPrinter.printText('purchase', style: SunmiTextStyle(bold: false, fontSize: 12));
+            await SunmiPrinter.lineWrap(2);
+
+            // Footer company info
+            await SunmiPrinter.printText('BIG RAFEAL', style: SunmiTextStyle(bold: true, fontSize: 16));
+            await SunmiPrinter.lineWrap(1);
+            await SunmiPrinter.printText('Address       : API World Tower -', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('                Sheikh Zayed Rd.', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Draw Date     : $drawDateTime', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.printText('Draw Time     : 23:30:00', style: SunmiTextStyle(bold: true, fontSize: 12));
+            await SunmiPrinter.lineWrap(2);
+
+            await SunmiPrinter.printText('You must redeem your coupon if there is', style: SunmiTextStyle(bold: true, fontSize: 10));
+            await SunmiPrinter.printText('any winner within 15 days', style: SunmiTextStyle(bold: true, fontSize: 10));
+
+            await SunmiPrinter.lineWrap(3);
+            await SunmiPrinter.cutPaper();
+
+            sunmiPrintSuccess = true;
+            _showSnackBar('Sunmi printing completed successfully!');
           } else {
             _showSnackBar('Sunmi printer binding failed. Will fall back to PDF printing.');
             throw Exception('Printer binding failed');
@@ -338,16 +381,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!sunmiPrintSuccess) {
         _showSnackBar('Falling back to PDF printing...');
 
-        // Load logos
+        // Load company logo
         final Uint8List? companyLogoData = await _loadCompanyLogo();
-        final Uint8List? pencilLogoData = await _loadPencilLogo();
 
         // Generate QR code with ONLY the unique receipt ID
         final Uint8List qrImageData = await _generateQrCode(uniqueReceiptId);
 
-        // Create PDF document with ONE page for all numbers
+        // Create PDF document
         final pdf = pw.Document();
-        final String product = '$lotteryNumbers x $lotteryName';
+
+        // Calculate VAT details
+        double totalPrice = double.parse(purchasePrice);
+        double vatRate = 0.05; // 5%
+        double priceWithoutVat = totalPrice / (1 + vatRate);
+        double vatAmount = totalPrice - priceWithoutVat;
 
         pdf.addPage(
           pw.Page(
@@ -356,201 +403,269 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               return pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
-                  pw.SizedBox(height: 30),
+                  pw.SizedBox(height: 20),
+
                   // Header with logo
                   companyLogoData != null
                       ? pw.Image(pw.MemoryImage(companyLogoData), width: 100, height: 50)
                       : pw.Text('BIG RAFEAL',
-                      style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                      style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+
+                  // Website link
+                  pw.Text('https://bigrafeal.info/',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 4),
 
-                  // Add selected categories
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
+                  // Promotional text
+                  pw.Text('Buy our Products and get a free',
+                      style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  pw.Text('entry to play our game',
+                      style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 12),
+
+                  // Tax Invoice (underlined)
+                  pw.Text('Tax Invoice',
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  pw.Container(
+                    width: 100,
+                    height: 1,
+                    color: PdfColors.black,
+                  ),
+                  pw.SizedBox(height: 8),
+
+                  // Receipt details
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      if (widget.sequence)
-                        pw.Container(
-                          margin: const pw.EdgeInsets.only(right: 8),
-                          child: pw.Text('STRAIGHT ',
-                              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                        ),
-                      if (widget.rumble)
-                        pw.Container(
-                          margin: const pw.EdgeInsets.only(right: 8),
-                          child: pw.Text('RUMBLE ',
-                              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                        ),
-                      if (widget.chance)
-                        pw.Text('CHANCE ',
-                            style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('TRN NO', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': $uniqueReceiptId', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Invoice No', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': ${widget.selectedNumbers.length}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Sale Date', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': $purchaseDateTime', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Price', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': AED $purchasePrice', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('VAT%', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': 5%', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('VAT 5%', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': AED ${vatAmount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Total Inc. Vat', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': AED $purchasePrice', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 12),
+
+                  // Ticket Details (underlined)
+                  pw.Text('Ticket Details',
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  pw.Container(
+                    width: 100,
+                    height: 1,
+                    color: PdfColors.black,
+                  ),
+                  pw.SizedBox(height: 8),
+
+                  // Game details
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Game Mode', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': $lotteryName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Ticket Type', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': ${() {
+                            String ticketType = '';
+                            if (widget.sequence) ticketType += 'Straight ';
+                            if (widget.rumble) ticketType += 'Rumble ';
+                            if (widget.chance) ticketType += 'Chance ';
+                            if (ticketType.isEmpty) ticketType = widget.combinationCode as String;
+                            return ticketType.trim();
+                          }()}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 12),
+
+                  // Selected numbers in circles
+                  ...widget.selectedNumbers.asMap().entries.map((entry) {
+                    List<int> numbers = entry.value;
+                    return pw.Container(
+                      alignment: pw.Alignment.center,
+                      margin: const pw.EdgeInsets.symmetric(vertical: 4),
+                      child: pw.Wrap(
+                        alignment: pw.WrapAlignment.center,
+                        spacing: 8,
+                        children: numbers.map((number) {
+                          return pw.Container(
+                            width: 20,
+                            height: 20,
+                            decoration: pw.BoxDecoration(
+                              shape: pw.BoxShape.circle,
+                              border: pw.Border.all(width: 1),
+                            ),
+                            alignment: pw.Alignment.center,
+                            child: pw.Text(
+                              number.toString().padLeft(2, '0'),
+                              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    );
+                  }),
+                  pw.SizedBox(height: 12),
+
+                  // Shop Details (underlined)
+                  pw.Text('Point of Sales Details',
+                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  pw.Container(
+                    width: 100,
+                    height: 1,
+                    color: PdfColors.black,
+                  ),
+                  pw.SizedBox(height: 8),
+
+                  // Shop information
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Vendor Name', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Flexible(
+                            child: pw.Text(': $merchantName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Vendor', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Flexible(
+                            child: pw.Text(': $shopName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      pw.Row(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Address', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Expanded(
+                            child: pw.Text(': $shopAddress', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 12),
+
+                  // QR code
+                  qrImageData.isNotEmpty
+                      ? pw.Container(
+                      width: 80,
+                      height: 80,
+                      color: PdfColors.white,
+                      child: pw.Image(pw.MemoryImage(qrImageData))
+                  )
+                      : pw.Container(height: 80, width: 80),
+                  pw.SizedBox(height: 8),
+
+                  // QR instruction text (not bold)
+                  pw.Text('To claim your reward scan this QR code',
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.normal)),
+                  pw.Text('at the point of sale where you made',
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.normal)),
+                  pw.Text('purchase',
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.normal)),
+                  pw.SizedBox(height: 12),
+
+                  // Footer company info
+                  pw.Text('BIG RAFEAL',
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 4),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Address', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': API World Tower -', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.end,
+                        children: [
+                          pw.Text('Sheikh Zayed Rd.', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Draw Date', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': $drawDateTime', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Draw Time', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(': 23:30:00', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
                     ],
                   ),
                   pw.SizedBox(height: 8),
 
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Price (inc. VAT 5%):',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      pw.Text('AED $purchasePrice',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Purchased:',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      pw.Text(purchaseDateTime,
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Product:',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      pw.Text(product,
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-
-                  // Product details
-                  pw.SizedBox(height: 5),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Product pencil:',
-                          style: pw.TextStyle(fontSize: 9)),
-                      pw.Text('${int.parse(purchasePrice)/5} x 3.5 AED',
-                          style: pw.TextStyle(fontSize: 9)),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Tax:',
-                          style: pw.TextStyle(fontSize: 9)),
-                      pw.Text('1.5 AED',
-                          style: pw.TextStyle(fontSize: 9)),
-                    ],
-                  ),
-
-                  pw.SizedBox(height: 10),
-                  // Pencil logo
-                  pencilLogoData != null
-                      ? pw.Image(pw.MemoryImage(pencilLogoData), width: 50, height: 50)
-                      : pw.SizedBox(),
-                  pw.SizedBox(height: 10),
-
-                  // ALL Selected numbers in rows
-                  ...widget.selectedNumbers.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    List<int> numbers = entry.value;
-
-                    return pw.Column(
-                      children: [
-                        // pw.Text('Row ${index + 1}',
-                        //     style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                        // pw.SizedBox(height: 4),
-                        pw.Container(
-                          alignment: pw.Alignment.center,
-                          margin: const pw.EdgeInsets.symmetric(vertical: 6),
-                          child: pw.Wrap(
-                            alignment: pw.WrapAlignment.center,
-                            spacing: 8,
-                            children: numbers.map((number) {
-                              return pw.Container(
-                                width: 20,
-                                height: 20,
-                                decoration: pw.BoxDecoration(
-                                  shape: pw.BoxShape.circle,
-                                  border: pw.Border.all(width: 0.8),
-                                ),
-                                alignment: pw.Alignment.center,
-                                child: pw.Text(
-                                  number.toString().padLeft(2, '0'),
-                                  style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        pw.SizedBox(height: 8),
-                      ],
-                    );
-                  }),
-
-                  // Receipt details (using unique receipt ID)
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Receipt ID:',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      pw.Text(uniqueReceiptId,
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Merchant Name:',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      pw.Flexible(
-                        child: pw.Text(merchantName,
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
-                          textAlign: pw.TextAlign.right,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.end,
-                    children: [
-                      pw.Text(shopName,
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text('Draw Date:',
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                      pw.Text(drawDateTime,
-                          style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-                    ],
-                  ),
-
-                  // Divider and jackpot info
-                  pw.Divider(thickness: 1),
-                  pw.Text(lotteryName,
-                      style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('GRAND JACKPOT $winningPrice AED',
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                  pw.Divider(thickness: 1),
-
-                  // QR code with unique receipt ID
-                  qrImageData.isNotEmpty
-                      ? pw.Container(
-                      width: 100,
-                      height: 100,
-                      color: PdfColors.white,
-                      child: pw.Image(pw.MemoryImage(qrImageData))
-                  )
-                      : pw.Container(height: 100, width: 100),
-
-                  // Footer
-                  pw.Text('BIG RAFEAL L.L.C',
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('For more information,',
-                      style: pw.TextStyle(fontSize: 8)),
-                  pw.Text('visit www.bigrafeal.info',
+                  pw.Text('You must redeem your coupon if there is',
                       style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('info@bigrafeal.info',
+                  pw.Text('any winner within 15 days',
                       style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                  pw.SizedBox(height: 6),
-                  pw.Text('---- Thank You ----',
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                   pw.SizedBox(height: 30),
                 ],
               );
@@ -558,7 +673,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         );
 
-        // Print the single document
+        // Print the PDF document
         _showSnackBar('Printing PDF document...');
         await Printing.layoutPdf(
           onLayout: (PdfPageFormat format) async => pdf.save(),
@@ -569,13 +684,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       _showSnackBar('Receipt processed successfully');
 
-      // Navigate to ticket details screen after printing
+      // Navigate to home screen after printing
       if (mounted && widget.selectedNumbers.isNotEmpty) {
-        final Object lotteryCode = _currentLottery?.id ?? '';
-
-        Get.offAll(
-              () => AnimatedHomeScreen(),
-        );
+        Get.offAll(() => AnimatedHomeScreen());
       }
     } catch (e) {
       _showSnackBar('Error processing receipt: $e');
