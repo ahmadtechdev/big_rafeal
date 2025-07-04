@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lottery_app/utils/custom_snackbar.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -87,11 +88,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _showSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-      );
-    }
+
+      CustomSnackBar.success(message, duration: 2);
   }
   Future<Uint8List> _generateQrCode(String uniqueReceiptId) async {
     try {
@@ -268,7 +266,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               // Print categories
               String categories = '';
-              if (widget.sequence) categories += 'SEQUENCE ';
+              if (widget.sequence) categories += 'STRAIGHT ';
               if (widget.rumble) categories += 'RUMBLE ';
               if (widget.chance) categories += 'CHANCE ';
               if (categories.isNotEmpty) {
@@ -373,7 +371,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       if (widget.sequence)
                         pw.Container(
                           margin: const pw.EdgeInsets.only(right: 8),
-                          child: pw.Text('SEQUENCE ',
+                          child: pw.Text('STRAIGHT ',
                               style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
                         ),
                       if (widget.rumble)
@@ -576,13 +574,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final Object lotteryCode = _currentLottery?.id ?? '';
 
         Get.offAll(
-              () => TicketDetailsScreen(
-            selectedNumbersRows: widget.selectedNumbers,
-            price: widget.price,
-            ticketId: uniqueReceiptId, // Use the unique receipt ID
-            purchaseDateTime: _getCurrentDateTime(),
-            product: '${widget.selectedNumbers.length} x ${_currentLottery?.lotteryName ?? 'GRAND 6'}',
-          ),
+              () => AnimatedHomeScreen(),
         );
       }
     } catch (e) {

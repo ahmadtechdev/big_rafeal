@@ -354,4 +354,46 @@ class ApiService {
     }
   }
 
+  // Add this to api_service.dart
+  Future<Map<String, dynamic>> claimTickets({
+    required String orderId,
+    required String userId,
+  }) async {
+    try {
+      final data = FormData.fromMap({
+        'order_id': orderId,
+        'user_id': userId,
+      });
+
+      final response = await _dio.request(
+        '$_baseUrl/claim-tickets',
+        options: Options(method: 'POST'),
+        data: data,
+      );
+
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw 'Failed to claim tickets with status: ${response.statusCode}';
+      }
+    } on DioException catch (e) {
+      if (e.response != null) {
+        if (e.response!.data is Map) {
+          final errorMessage = e.response!.data['message'] ?? 'Ticket claim failed';
+          throw errorMessage;
+        } else {
+          throw 'Ticket claim failed with status: ${e.response!.statusCode}';
+        }
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        throw 'Connection timed out. Please check your internet connection.';
+      } else if (e.type == DioExceptionType.connectionError) {
+        throw 'Cannot connect to server. Please check your internet connection.';
+      } else {
+        throw 'Something went wrong. Please try again later.';
+      }
+    } catch (e) {
+      throw 'Ticket claim failed: $e';
+    }
+  }
+
 }

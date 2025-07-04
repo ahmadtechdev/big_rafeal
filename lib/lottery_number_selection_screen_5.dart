@@ -1142,7 +1142,7 @@ class _LotteryNumberSelectionScreenState
 // Helper method to get simplified combination name
   String _getCombinationName(int code) {
     switch (code) {
-      case 0: return 'Sequence';
+      case 0: return 'Straight';
       case 1: return 'Rumble';
       case 2: return 'Seq+Rum';
       case 3: return 'Chance';
