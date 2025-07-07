@@ -230,8 +230,8 @@ class LotteryHistoryScreen extends StatelessWidget {
     );
   }
   Widget _buildLotteryCard(UserLottery lottery, int index) {
-    final isWin = lottery.wOrL == 'WIN';
-    final isLoss = lottery.wOrL == 'LOSS';
+    final isWin = lottery.wOrL.contains('WIN');
+    final isLoss = lottery.wOrL.contains('LOSS');
 
     final statusColor = isWin
         ? Colors.green
@@ -240,7 +240,7 @@ class LotteryHistoryScreen extends StatelessWidget {
         : Colors.orange;
 
     final statusText = isWin
-        ? 'WIN'
+        ? lottery.wOrL
         : isLoss
         ? 'LOSS'
         : 'PENDING';
@@ -318,6 +318,7 @@ class LotteryHistoryScreen extends StatelessWidget {
                       ),
                       child: Text(
                         statusText,
+                        // "statusText",
                         style: TextStyle(
                           color: statusColor,
                           fontWeight: FontWeight.bold,

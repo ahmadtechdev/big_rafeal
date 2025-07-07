@@ -185,8 +185,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
       final String merchantName = _currentUser?.name ?? '';
       final String shopName = _currentUser?.shopName ?? '';
-      // final String shopAddress = _currentUser?.address ?? '';
-      final String shopAddress = "Address";
+      final String shopAddress = _currentUser?.address ?? '';
+      // final String shopAddress = "Address";
       final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
 
       final User? user = _currentUser;
@@ -441,50 +441,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('TRN NO', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': $uniqueReceiptId', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('TRN NO: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(uniqueReceiptId, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Invoice No', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': ${widget.selectedNumbers.length}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Invoice No:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('${widget.selectedNumbers.length}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Sale Date', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': $purchaseDateTime', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Sale Date: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(purchaseDateTime, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Price', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': AED $purchasePrice', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Price: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('AED $purchasePrice', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('VAT%', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': 5%', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('VAT%:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('5%', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('VAT 5%', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': AED ${vatAmount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('VAT 5%:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('AED ${vatAmount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Total Inc. Vat', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': AED $purchasePrice', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Total Inc. Vat: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('AED $purchasePrice', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                     ],
@@ -508,22 +508,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Game Mode', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': $lotteryName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Game Mode: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(lotteryName, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Ticket Type', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': ${() {
+                          pw.Text('Ticket Type: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(() {
                             String ticketType = '';
                             if (widget.sequence) ticketType += 'Straight ';
                             if (widget.rumble) ticketType += 'Rumble ';
                             if (widget.chance) ticketType += 'Chance ';
                             if (ticketType.isEmpty) ticketType = widget.combinationCode as String;
                             return ticketType.trim();
-                          }()}', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          }(), style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                     ],
@@ -549,7 +549,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             ),
                             alignment: pw.Alignment.center,
                             child: pw.Text(
-                              number.toString().padLeft(2, '0'),
+                              number.toString(),
                               style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
                             ),
                           );
@@ -576,27 +576,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Vendor Name', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Vendor Name: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                           pw.Flexible(
-                            child: pw.Text(': $merchantName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                            child: pw.Text(merchantName, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                           ),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Vendor', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Vendor: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                           pw.Flexible(
-                            child: pw.Text(': $shopName', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                            child: pw.Text(shopName, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                           ),
                         ],
                       ),
                       pw.Row(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('Address', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Address:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                           pw.Expanded(
-                            child: pw.Text(': $shopAddress', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                            child: pw.Text(shopAddress, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -634,8 +634,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Address', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': API World Tower -', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Address:', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('API World Tower -', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
@@ -647,15 +647,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Draw Date', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': $drawDateTime', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Draw Date: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(drawDateTime, style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                       pw.Row(
                         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                         children: [
-                          pw.Text('Draw Time', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(': 23:30:00', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('Draw Time: ', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                          pw.Text('23:30:00', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
                         ],
                       ),
                     ],

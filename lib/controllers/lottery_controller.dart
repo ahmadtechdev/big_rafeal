@@ -78,7 +78,6 @@ class LotteryController extends GetxController {
   }
 
 
-
   // Refresh lottery data
   void refreshLotteries() {
     fetchLotteries();

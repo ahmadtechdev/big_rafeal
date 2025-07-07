@@ -113,6 +113,8 @@ class _LotteryNumberSelectionScreenState
   @override
   void initState() {
     super.initState();
+    lotteryController.refreshLotteries();
+
     for (int i = 0; i < widget.rowCount; i++) {
       selectedNumbersRows.add([]);
     }

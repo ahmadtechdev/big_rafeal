@@ -6,6 +6,7 @@ class User {
   final String shopName;
   final String? emailVerifiedAt;
   final String role;
+  final String address;
   final String createdAt;
   final String updatedAt;
 
@@ -16,6 +17,7 @@ class User {
     required this.shopName,
     this.emailVerifiedAt,
     required this.role,
+    required this.address,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -28,6 +30,7 @@ class User {
       shopName: json['shop_name'] ?? '',
       emailVerifiedAt: json['email_verified_at']?? '',
       role: json['role']?? '',
+      address: json['address']?? '',
       createdAt: json['created_at'] ?? '',
       updatedAt: json['updated_at'] ?? '',
     );
@@ -41,6 +44,7 @@ class User {
       'phone': shopName,
       'email_verified_at': emailVerifiedAt,
       'role': role,
+      'address': address,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };

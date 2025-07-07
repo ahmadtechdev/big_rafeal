@@ -301,24 +301,43 @@ class SalesReportScreen extends StatelessWidget {
 
   Widget _buildSaleItem(UserLottery userLottery, int index) {
     final status = userLottery.wOrL.toUpperCase(); // "WIN", "LOSS", or "PENDING"
+    final isWin = userLottery.wOrL.contains('WIN');
+    final isLoss = userLottery.wOrL.contains('LOSS');
 
-    final statusColor = switch (status) {
-      'WIN' => Colors.green,
-      'LOSS' => Colors.red,
-      _ => Colors.orange,
-    };
+    // final statusColor = switch (status) {
+    //   'WIN' => Colors.green,
+    //   'LOSS' => Colors.red,
+    //   _ => Colors.orange,
+    // };
 
-    final statusIcon = switch (status) {
-      'WIN' => Icons.emoji_events,
-      'LOSS' => Icons.cancel,
-      _ => Icons.access_time,
-    };
+    // final statusIcon = switch (status) {
+    //   'WIN' => Icons.emoji_events,
+    //   'LOSS' => Icons.cancel,
+    //   _ => Icons.access_time,
+    // };
 
-    final statusText = switch (status) {
-      'WIN' => 'WIN',
-      'LOSS' => 'LOSS',
-      _ => 'PENDING',
-    };
+    // final statusText = switch (status) {
+    //   'WIN' => 'WIN',
+    //   'LOSS' => 'LOSS',
+    //   _ => 'PENDING',
+    // };
+
+    final statusIcon = isWin
+        ? Icons.emoji_events
+        : isLoss
+        ? Icons.cancel
+        : Icons.access_time;
+    final statusColor = isWin
+        ? Colors.green
+        : isLoss
+        ? Colors.red
+        : Colors.orange;
+
+    final statusText = isWin
+        ? userLottery.wOrL
+        : isLoss
+        ? 'LOSS'
+        : 'PENDING';
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: 1.0),
