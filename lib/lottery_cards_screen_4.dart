@@ -64,27 +64,30 @@ class LotteryCardsScreen extends StatelessWidget {
                   lottery.rumbleRewards,
                   lottery.chanceRewards,
                 );
+                if(!_isLotteryExpired(lottery)){
+                  return _buildLotteryCard(
+                    context: context,
+                    lotteryId: lottery.id,
+                    title:
+                    lottery.lotteryName.isNotEmpty
+                        ? lottery.lotteryName
+                        : 'Lottery',
+                    price: double.tryParse(lottery.purchasePrice) ?? 0.0,
+                    drawDate: lottery.endDate,
+                    prizeAmount: 'AED ${maxReward.toStringAsFixed(2)}',
+                    circleCount: int.tryParse(lottery.numberLottery) ?? 1,
+                    maxNumbers: int.tryParse(lottery.digits) ?? 9,
+                    image: lottery.image,
+                    announcedResult: lottery.announcedResult.toString(),
+                    sequenceRewards: lottery.sequenceRewards,
+                    rumbleRewards: lottery.rumbleRewards,
+                    chanceRewards: lottery.chanceRewards,
+                    isExpired: _isLotteryExpired(lottery),
+                    lotteryCategory: lottery.lotteryCategory,
+                  );
+                }
 
-                return _buildLotteryCard(
-                  context: context,
-                  lotteryId: lottery.id,
-                  title:
-                      lottery.lotteryName.isNotEmpty
-                          ? lottery.lotteryName
-                          : 'Lottery',
-                  price: double.tryParse(lottery.purchasePrice) ?? 0.0,
-                  drawDate: lottery.endDate,
-                  prizeAmount: 'AED ${maxReward.toStringAsFixed(2)}',
-                  circleCount: int.tryParse(lottery.numberLottery) ?? 1,
-                  maxNumbers: int.tryParse(lottery.digits) ?? 9,
-                  image: lottery.image,
-                  announcedResult: lottery.announcedResult.toString(),
-                  sequenceRewards: lottery.sequenceRewards,
-                  rumbleRewards: lottery.rumbleRewards,
-                  chanceRewards: lottery.chanceRewards,
-                  isExpired: _isLotteryExpired(lottery),
-                  lotteryCategory: lottery.lotteryCategory,
-                );
+
               } catch (e) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),

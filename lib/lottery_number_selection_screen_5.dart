@@ -386,7 +386,8 @@ class _LotteryNumberSelectionScreenState
                   border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: Text(
-                  'Price: AED ${(widget.price * widget.rowCount).toInt()}',
+                  // 'Price: AED ${(widget.price * widget.rowCount).toInt()}',
+                  'Price: AED ${(widget.price).toInt()}',
                   style: const TextStyle(
                     color: Colors.black87,
                     fontWeight: FontWeight.bold,
@@ -1115,7 +1116,8 @@ class _LotteryNumberSelectionScreenState
 // Updated getter for totalPrice to include all selected categories
   double get totalPrice {
     // For lotteries with numberLottery > 5, price doesn't increase with category selection
-    if (widget.numbersPerRow > 5) {
+    // if (widget.numbersPerRow > 5) {
+    if (false) {
       return widget.price ;
     } else {
       // Original pricing logic for lotteries with numberLottery <= 5
@@ -1138,7 +1140,7 @@ class _LotteryNumberSelectionScreenState
         }
       }
 
-      return widget.price * selectedCategoryCount;
+      return widget.price * selectedCategoryCount * widget.rowCount;
     }
   }
 // Helper method to get simplified combination name
