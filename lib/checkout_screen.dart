@@ -153,7 +153,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  // Load company logo image
+// Load company logo image
   Future<Uint8List?> _loadCompanyLogo() async {
     try {
       final ByteData data = await rootBundle.load('assets/logo2.png');
@@ -180,12 +180,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final String purchaseDateTime = _getCurrentDateTime();
       final String drawDateTime = _getDrawDateTime();
       final String lotteryName = _currentLottery?.lotteryName ?? 'Lot Name';
-      final String winningPrice = _currentLottery?.maxReward.toString() ?? '000';
       final String purchasePrice = _currentLottery?.purchasePrice ?? '0';
       final String merchantName = _currentUser?.name ?? '';
       final String shopName = _currentUser?.shopName ?? '';
       final String shopAddress = _currentUser?.address ?? '';
-      final String lotteryNumbers = _currentLottery?.numberLottery.toString() ?? '';
 
       final User? user = _currentUser;
       if (user == null) {
@@ -195,8 +193,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       // Generate ONE unique ID for this receipt
       final String uniqueReceiptId = generateUniqueReceiptId();
-      print(":ahmad");
-      print(uniqueReceiptId);
 
       final ApiService apiService = ApiService();
 
@@ -240,11 +236,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Create PDF document
       final pdf = pw.Document();
 
-      // Calculate VAT details
-      double totalPrice = double.parse(purchasePrice);
+
       double vatRate = 0.05; // 5%
-      double priceWithoutVat = totalPrice / (1 + vatRate);
-      double vatAmount = widget.price * vatRate ;
+
+      double vatAmount = widget.price * vatRate;
 
       pdf.addPage(
         pw.Page(
@@ -253,222 +248,134 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             return pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.center,
               children: [
-                pw.SizedBox(height: 8), // Reduced top spacing
+                pw.SizedBox(height: 10),
 
-                // Header with logo - Enhanced with monospace font
+                // Header with logo - Using default font (similar to Image 1)
                 companyLogoData != null
                     ? pw.Image(pw.MemoryImage(companyLogoData), width: 120, height: 60)
                     : pw.Text('BIG RAFEAL',
-                    style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
+                    style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 8),
+
+                // Website link
+                pw.Text('https://bigrafeal.info/',
+                    style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.normal)),
                 pw.SizedBox(height: 6),
 
-                // Website link - Enhanced with monospace font
-                pw.Text('https://bigrafeal.info/',
-                    style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                pw.SizedBox(height: 4),
+                // Promotional text
+                pw.Text('Buy our Products and get a',
+                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.normal)),
+                pw.Text('free entry to play our game',
+                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.normal)),
+                pw.SizedBox(height: 12),
 
-                // Promotional text - Enhanced with monospace font
-                pw.Text('Buy our Products and get a ',
-                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                pw.Text(' free entry to play our game',
-                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                pw.SizedBox(height: 8),
-
-                // Tax Invoice (underlined) - Enhanced with monospace font
+                // Tax Invoice (underlined)
                 pw.Text('Tax Invoice',
-                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
                 pw.Container(
-                  width: 120,
-                  height: 2,
+                  width: 100,
+                  height: 1,
                   color: PdfColors.black,
                 ),
-                pw.SizedBox(height: 8),
+                pw.SizedBox(height: 12),
 
-                // Receipt details - Enhanced with bigger, bolder text and monospace font
+                // Receipt details - Clean layout like Image 1
                 pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('TRN NO: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text(uniqueReceiptId, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Invoice No: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text('${widget.selectedNumbers.length}', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Sale Date: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text(purchaseDateTime, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Price: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text('AED $purchasePrice', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('VAT%: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text('5%', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('VAT 5%: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text('AED ${vatAmount.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Total Inc. Vat: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text('AED ${widget.price}', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
+                    _buildReceiptRow('TRN NO', ':', uniqueReceiptId),
+                    _buildReceiptRow('Invoice No', ':', '${widget.selectedNumbers.length}'),
+                    _buildReceiptRow('Sale Date', ':', purchaseDateTime),
+                    _buildReceiptRow('Price', ':', 'AED $purchasePrice'),
+                    _buildReceiptRow('VAT%', ':', '5%'),
+                    _buildReceiptRow('VAT 5%', ':', 'AED ${vatAmount.toStringAsFixed(2)}'),
+                    _buildReceiptRow('Total Inc. Vat', ':', 'AED ${widget.price}'),
                   ],
                 ),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 15),
 
-                // Ticket Details (underlined) - Enhanced with monospace font
+                // Ticket Details (underlined)
                 pw.Text('Ticket Details',
-                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
                 pw.Container(
-                  width: 120,
-                  height: 2,
+                  width: 100,
+                  height: 1,
                   color: PdfColors.black,
                 ),
-                pw.SizedBox(height: 8),
+                pw.SizedBox(height: 12),
 
-                // Game details - Enhanced with monospace font
+                // Game details - Clean layout
                 pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Game Mode: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text('$lotteryName', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Ticket Type: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text(() {
-                          String ticketType = '';
-                          if (widget.sequence) ticketType += 'Straight ';
-                          if (widget.rumble) ticketType += 'Rumble ';
-                          if (widget.chance) ticketType += 'Chance ';
-                          if (ticketType.isEmpty) ticketType = widget.combinationCode as String;
-                          return ticketType.trim();
-                        }(), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
+                    _buildReceiptRow('Game Mode', ':', lotteryName),
+                    _buildReceiptRow('Ticket Type', ':', () {
+                      String ticketType = '';
+                      if (widget.sequence) ticketType += 'Straight ';
+                      if (widget.rumble) ticketType += 'Rumble ';
+                      if (widget.chance) ticketType += 'Chance ';
+                      if (ticketType.isEmpty) ticketType = widget.combinationCode as String;
+                      return ticketType.trim();
+                    }()),
                   ],
                 ),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 15),
 
-                // Selected numbers in circles - Enhanced with bigger circles
+                // Selected numbers in circles - Better spacing like Image 1
                 ...widget.selectedNumbers.asMap().entries.map((entry) {
                   List<int> numbers = entry.value;
                   return pw.Container(
                     alignment: pw.Alignment.center,
-                    margin: const pw.EdgeInsets.symmetric(vertical: 3),
+                    margin: const pw.EdgeInsets.symmetric(vertical: 4),
                     child: pw.Wrap(
                       alignment: pw.WrapAlignment.center,
-                      spacing: 10,
+                      spacing: 8,
                       children: numbers.map((number) {
                         return pw.Container(
-                          width: 26,
-                          height: 26,
+                          width: 24,
+                          height: 24,
                           decoration: pw.BoxDecoration(
                             shape: pw.BoxShape.circle,
-                            border: pw.Border.all(width: 2),
+                            border: pw.Border.all(width: 1.5),
                           ),
                           alignment: pw.Alignment.center,
                           child: pw.Text(
                             number.toString(),
-                            style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: pw.Font.courier()),
+                            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
                           ),
                         );
                       }).toList(),
                     ),
                   );
                 }),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 15),
 
-                // Shop Details (underlined) - Enhanced with monospace font
+                // Shop Details (underlined)
                 pw.Text('Point of Sales Details',
-                    style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
                 pw.Container(
-                  width: 120,
-                  height: 2,
+                  width: 140,
+                  height: 1,
                   color: PdfColors.black,
                 ),
-                pw.SizedBox(height: 8),
+                pw.SizedBox(height: 12),
 
-                // Shop information - Enhanced with monospace font
+                // Shop information - Clean layout
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Vendor Name: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Flexible(
-                          child: pw.Text(merchantName, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        ),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Vendor: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Flexible(
-                          child: pw.Text(shopName, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        ),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      crossAxisAlignment: pw.CrossAxisAlignment.center,
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Address: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Expanded(
-                          child: pw.Text(shopAddress, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        ),
-                      ],
-                    ),
+                    _buildReceiptRow('Vendor Name', ':', merchantName),
+                    _buildReceiptRow('Vendor', ':', shopName),
+                    _buildReceiptRow('Address', ':', shopAddress),
                   ],
                 ),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 15),
 
-                // QR code - Enhanced with bigger size
+                // QR code - Same size as Image 1
                 qrImageData.isNotEmpty
                     ? pw.Container(
-                    width: 100,
-                    height: 100,
+                    width: 80,
+                    height: 80,
                     decoration: pw.BoxDecoration(
                       color: PdfColors.white,
                       border: pw.Border.all(width: 1, color: PdfColors.black),
@@ -476,62 +383,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: pw.Image(pw.MemoryImage(qrImageData))
                 )
                     : pw.Container(
-                  height: 100,
-                  width: 100,
+                  height: 80,
+                  width: 80,
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(width: 1, color: PdfColors.black),
                   ),
                   alignment: pw.Alignment.center,
-                  child: pw.Text('QR CODE', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
+                  child: pw.Text('QR CODE', style: pw.TextStyle(fontSize: 12)),
                 ),
-                pw.SizedBox(height: 8),
-
-                // QR instruction text - Enhanced with monospace font
-                pw.Text('To claim your reward scan this ',
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal, font: pw.Font.courier())),
-                pw.Text('QR code at the point of sale where you made purchase',
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal, font: pw.Font.courier())),
                 pw.SizedBox(height: 10),
 
-                // Footer company info - Enhanced with monospace font
-                pw.Text('BIG RAFEAL',
-                    style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                pw.SizedBox(height: 6),
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.center,
-                  children: [
-                    // pw.Row(
-                    //   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    //   children: [
-                    //     pw.Text('Address', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                    //     pw.Text(': API World Tower -', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                    //   ],
-                    // ),
-                    // pw.Row(
-                    //   mainAxisAlignment: pw.MainAxisAlignment.end,
-                    //   children: [
-                    //     pw.Text('Sheikh Zayed Rd.', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                    //   ],
-                    // ),
-                    pw.SizedBox(height: 2),
-                    pw.Row(
-                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                      children: [
-                        pw.Text('Draw Time: ', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                        pw.Text(drawDateTime, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
-                      ],
-                    ),
-                    pw.SizedBox(height: 2),
+                // QR instruction text
+                pw.Text('To claim your reward scan this QR code',
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal)),
+                pw.Text('at the point of sale where you made',
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal)),
+                pw.Text('purchase',
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal)),
+                pw.SizedBox(height: 12),
 
-                  ],
-                ),
+                // Footer company info
+                pw.Text('BIG RAFEAL',
+                    style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 8),
 
-                // Final disclaimer - Enhanced with monospace font
-                pw.Text('You must redeem your coupon if ',
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
+                // Footer details
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _buildReceiptRow('Draw Time', ':', drawDateTime),
+                  ],
+                ),
+                pw.SizedBox(height: 12),
+
+                // Final disclaimer
+                pw.Text('You must redeem your coupon if',
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal)),
                 pw.Text('there is any winner within 15 days',
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, font: pw.Font.courier())),
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.normal)),
                 pw.SizedBox(height: 15),
               ],
             );
@@ -562,6 +451,64 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
+// Helper function to build receipt rows with consistent formatting
+  pw.Widget _buildReceiptRow(String label, String separator, String value) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.symmetric(vertical: 1, horizontal: 8),
+      child: pw.LayoutBuilder(
+        builder: (context, constraints) {
+          // Calculate available width for the value
+          final labelWidth = label.length * 6.0; // Approximate width per character
+          final separatorWidth = 10.0;
+          final availableWidth = constraints!.maxWidth - labelWidth - separatorWidth - 16; // 16 for padding
+
+          // Check if value might overflow (approximate)
+          final valueWidth = value.length * 6.0;
+
+          if (valueWidth > availableWidth) {
+            // If overflow, use column layout
+            return pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Row(
+                  children: [
+                    pw.Text(label, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                    pw.Text(separator, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.only(top: 2),
+                  child: pw.Text(
+                    value,
+                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                    textAlign: pw.TextAlign.right,
+                  ),
+                ),
+              ],
+            );
+          } else {
+            // If no overflow, use row layout
+            return pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(label, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                pw.Text(separator, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                pw.Expanded(
+                  child: pw.Text(
+                    value,
+                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                    textAlign: pw.TextAlign.right,
+                  ),
+                ),
+              ],
+            );
+          }
+        },
+      ),
+    );
+  }
 // Helper method to get printer status message
   String _getPrinterStatusMessage(int status) {
     switch (status) {
