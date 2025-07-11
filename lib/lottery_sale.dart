@@ -6,10 +6,13 @@ import '../controllers/lottery_sale_controller.dart';
 import '../controllers/user_controller.dart';
 import '../utils/app_colors.dart';
 import '../models/user_lottery_modal.dart';
+import 'api_service/api_service.dart';
+
 
 class LotteryHistoryScreen extends StatelessWidget {
   final LotterySaleController _saleController = Get.put(LotterySaleController());
   final UserController _userController = Get.find<UserController>();
+  final ApiService _apiService = ApiService();
 
   LotteryHistoryScreen({super.key}) {
     _loadTickets();
@@ -28,6 +31,67 @@ class LotteryHistoryScreen extends StatelessWidget {
       return DateFormat('MMM dd, yyyy').format(dateTime);
     } catch (e) {
       return dateString;
+    }
+  }
+
+  bool _isToday(String dateString) {
+    try {
+      final DateTime dateTime = DateTime.parse(dateString);
+      final DateTime now = DateTime.now();
+      return dateTime.year == now.year &&
+          dateTime.month == now.month &&
+          dateTime.day == now.day;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _cancelTicket(String orderId) async {
+    try {
+      final result = await Get.defaultDialog<bool>(
+        title: 'Confirm Cancellation',
+        middleText: 'Are you sure you want to cancel this ticket?',
+        textConfirm: 'Yes',
+        textCancel: 'No',
+        confirmTextColor: AppColors.textLight,
+        buttonColor: AppColors.primaryColor,
+        cancelTextColor: AppColors.textDark,
+        onConfirm: () async {
+          Get.back(result: true);
+        },
+        onCancel: () {
+          Get.back(result: false);
+        },
+      );
+
+      if (result == true) {
+        Get.dialog(
+          const Center(child: CircularProgressIndicator()),
+          barrierDismissible: false,
+        );
+
+        await _apiService.cancelTicket(orderId);
+        Get.back(); // Close loading dialog
+
+        Get.snackbar(
+          'Success',
+          'Ticket cancelled successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+
+        _loadTickets(); // Refresh the list
+      }
+    } catch (e) {
+      Get.back(); // Close loading dialog if open
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -62,7 +126,7 @@ class LotteryHistoryScreen extends StatelessWidget {
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text(
-          'My Tickets Sales',
+          "Today's Tickets",
           style: TextStyle(color: AppColors.textLight),
         ),
         centerTitle: true,
@@ -99,7 +163,7 @@ class LotteryHistoryScreen extends StatelessWidget {
                 Obx(() {
                   final user = _userController.currentUser.value;
                   return Text(
-                    user != null ? '${user.name}\'s Ticket History' : 'Ticket History',
+                    user != null ? '${user.name}\'s Tickets' : 'Today\'s Tickets',
                     style: const TextStyle(
                       color: AppColors.textLight,
                       fontSize: 16,
@@ -109,7 +173,7 @@ class LotteryHistoryScreen extends StatelessWidget {
                 }),
                 const SizedBox(height: 8),
                 const Text(
-                  'All your sale tickets in one place',
+                  'All your today\'s tickets in one place',
                   style: TextStyle(
                     color: AppColors.textLight,
                     fontSize: 14,
@@ -164,64 +228,70 @@ class LotteryHistoryScreen extends StatelessWidget {
                     ],
                   ),
                 );
-              } else if (_saleController.tickets.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.confirmation_number_outlined,
-                        size: 80,
-                        color: AppColors.primaryColor.withOpacity(0.5),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No lottery tickets yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textDark,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Try to sell a lottery ticket to see your history here',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textGrey,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          Get.back();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryColor,
-                          foregroundColor: AppColors.textLight,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: const Text('Sell a Lottery Ticket'),
-                      ),
-                    ],
-                  ),
-                );
               } else {
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  itemCount: _saleController.tickets.length,
-                  itemBuilder: (context, index) {
-                    final lottery = _saleController.tickets[index];
-                    return _buildLotteryCard(lottery, index);
-                  },
-                );
+                // Filter tickets to show only today's tickets
+                final todayTickets = _saleController.tickets.where((ticket) =>
+                    _isToday(ticket.lotteryIssueDate)).toList();
+
+                if (todayTickets.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.confirmation_number_outlined,
+                          size: 80,
+                          color: AppColors.primaryColor.withOpacity(0.5),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No tickets for today',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Try to sell a lottery ticket to see your history here',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textGrey,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton(
+                          onPressed: () {
+                            Get.back();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryColor,
+                            foregroundColor: AppColors.textLight,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: const Text('Sell a Lottery Ticket'),
+                        ),
+                      ],
+                    ),
+                  );
+                } else {
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    itemCount: todayTickets.length,
+                    itemBuilder: (context, index) {
+                      final lottery = todayTickets[index];
+                      return _buildLotteryCard(lottery, index);
+                    },
+                  );
+                }
               }
             }),
           ),
@@ -229,22 +299,8 @@ class LotteryHistoryScreen extends StatelessWidget {
       ),
     );
   }
+
   Widget _buildLotteryCard(UserLottery lottery, int index) {
-    final isWin = lottery.wOrL.contains('WIN');
-    final isLoss = lottery.wOrL.contains('LOSS');
-
-    final statusColor = isWin
-        ? Colors.green
-        : isLoss
-        ? Colors.red
-        : Colors.orange;
-
-    final statusText = isWin
-        ? lottery.wOrL
-        : isLoss
-        ? 'LOSS'
-        : 'PENDING';
-
     return AnimatedOpacity(
       opacity: 1.0,
       duration: const Duration(milliseconds: 500),
@@ -302,30 +358,25 @@ class LotteryHistoryScreen extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: statusColor),
-                      ),
-                      child: Text(
-                        statusText,
-                        // "statusText",
-                        style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                    if (lottery.order_id != null && lottery.order_id!.isNotEmpty)
+                      GestureDetector(
+                        onTap: () => _cancelTicket(lottery.order_id!),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.delete,
+                            color: Colors.red,
+                            size: 20,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -407,5 +458,4 @@ class LotteryHistoryScreen extends StatelessWidget {
       ),
     );
   }
-
 }

@@ -12,6 +12,7 @@ class UserLottery {
   final String wOrL; // WIN or LOSS
   final String endDate;
   final String? category;
+  final String? order_id;
 
   UserLottery({
     required this.id,
@@ -27,6 +28,7 @@ class UserLottery {
     required this.wOrL,
     required this.endDate,
     this.category,
+    this.order_id,
   });
 
   factory UserLottery.fromJson(Map<String, dynamic> json) {
@@ -44,6 +46,7 @@ class UserLottery {
       wOrL: json['w_or_l'] ?? 'LOSS',
       endDate: json['end_date'] ?? '',
       category: json['category']?.toString() ?? '',
+      order_id: json['order_id']?.toString() ?? '',
     );
   }
 
@@ -62,6 +65,7 @@ class UserLottery {
       'w_or_l': wOrL,
       'end_date': endDate,
       'category': category,
+      'order_id': order_id,
     };
   }
 }

@@ -10,13 +10,10 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:ui' as ui;
 import 'package:get/get.dart';
 import 'package:sunmi_printer_plus/core/enums/enums.dart';
-import 'package:sunmi_printer_plus/core/styles/sunmi_text_style.dart';
-import 'package:sunmi_printer_plus/core/sunmi/sunmi_printer.dart';
+
 import 'api_service/api_service.dart';
 import 'dashboard.dart';
-import 'home_screen_1.dart';
 import 'utils/app_colors.dart';
-import 'ticket_details_screen.dart';
 import 'controllers/user_controller.dart';
 import 'controllers/lottery_controller.dart';
 import 'models/lottery_model.dart';
@@ -91,6 +88,47 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       CustomSnackBar.success(message, duration: 2);
   }
+  // Future<Uint8List> _generateQrCode(String uniqueReceiptId) async {
+  //   try {
+  //     final qrData = {'receipt_id': uniqueReceiptId};
+  //
+  //     final qrValidationResult = QrValidator.validate(
+  //       data: jsonEncode(qrData),
+  //       version: QrVersions.auto, // Fixed version
+  //       errorCorrectionLevel: QrErrorCorrectLevel.L,
+  //     );
+  //
+  //     if (qrValidationResult.status != QrValidationStatus.valid) {
+  //       throw Exception('QR code validation failed');
+  //     }
+  //
+  //     final qrCode = qrValidationResult.qrCode!;
+  //
+  //     // Use QrPainter directly without custom canvas
+  //     final painter = QrPainter.withQr(
+  //       qr: qrCode,
+  //       color: const Color(0xFF000000),
+  //       gapless: true,
+  //     );
+  //
+  //     // Simplified image generation
+  //     final pictureRecorder = ui.PictureRecorder();
+  //     final canvas = ui.Canvas(pictureRecorder);
+  //
+  //     const size = 200.0; // Smaller size for faster generation
+  //     painter.paint(canvas, const Size(size, size));
+  //
+  //     final picture = pictureRecorder.endRecording();
+  //     final img = await picture.toImage(size.toInt(), size.toInt());
+  //     final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+  //
+  //     return byteData!.buffer.asUint8List();
+  //   } catch (e) {
+  //     return Uint8List.fromList([]);
+  //   }
+  // }
+  //
+
   Future<Uint8List> _generateQrCode(String uniqueReceiptId) async {
     try {
       // QR data contains only the unique receipt ID
@@ -141,15 +179,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return byteData!.buffer.asUint8List();
     } catch (e) {
       return Uint8List.fromList([]);
-    }
-  }
-  // Load pencil logo image
-  Future<Uint8List?> _loadPencilLogo() async {
-    try {
-      final ByteData data = await rootBundle.load('assets/pencil.png');
-      return data.buffer.asUint8List();
-    } catch (e) {
-      return null;
     }
   }
 
@@ -212,7 +241,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           );
 
           if (response['success'] == true) {
-            _showSnackBar('Saving lottery ticket ${i+1}/${widget.selectedNumbers.length}');
+            _showSnackBar('Saving lottery ticket - ${widget.selectedNumbers.length}');
           } else {
             throw response['message'] ?? 'Failed to save ticket';
           }
@@ -222,12 +251,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         }
       }
 
-      _showSnackBar('Printing receipt...');
-
-      // Generate PDF receipt
-      _showSnackBar('Generating PDF receipt...');
-
-      // Load company logo
+     // Load company logo
       final Uint8List? companyLogoData = await _loadCompanyLogo();
 
       // Generate QR code with ONLY the unique receipt ID
@@ -428,20 +452,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       );
 
-      // Print the PDF document
-      _showSnackBar('Printing PDF document...');
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => pdf.save(),
         name: 'BIG_RAFEAL_Receipt.pdf',
         format: PdfPageFormat.roll80,
       );
 
-      _showSnackBar('Receipt processed successfully');
+
 
       // Navigate to home screen after printing
       if (mounted && widget.selectedNumbers.isNotEmpty) {
         Get.offAll(() => AnimatedHomeScreen());
       }
+      _showSnackBar('Receipt processed successfully');
     } catch (e) {
       _showSnackBar('Error processing receipt: $e');
     } finally {
@@ -508,33 +531,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         },
       ),
     );
-  }
-// Helper method to get printer status message
-  String _getPrinterStatusMessage(int status) {
-    switch (status) {
-      case 0:
-        return "Printer is normal";
-      case 1:
-        return "Printer is out of paper";
-      case 2:
-        return "Printer is overheating";
-      case 3:
-        return "Printer is busy";
-      case 4:
-        return "Printer cover is open";
-      case 5:
-        return "Printer cutter error";
-      case 6:
-        return "Printer cutter recovery error";
-      case 7:
-        return "Printer is not detected";
-      case 8:
-        return "Printer firmware upgrade error";
-      case 9:
-        return "Unknown error";
-      default:
-        return "Unknown status: $status";
-    }
   }
 
   @override
