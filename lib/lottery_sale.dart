@@ -48,6 +48,11 @@ class LotteryHistoryScreen extends StatelessWidget {
 
   Future<void> _cancelTicket(String orderId) async {
     try {
+      final userId = _userController.currentUser.value?.id ?? 0;
+      if (userId == 0) {
+        throw 'User not logged in';
+      }
+
       final result = await Get.defaultDialog<bool>(
         title: 'Confirm Cancellation',
         middleText: 'Are you sure you want to cancel this ticket?',
@@ -64,13 +69,15 @@ class LotteryHistoryScreen extends StatelessWidget {
         },
       );
 
+      print("ahmad1");
+      print(result);
       if (result == true) {
         Get.dialog(
           const Center(child: CircularProgressIndicator()),
           barrierDismissible: false,
         );
 
-        await _apiService.cancelTicket(orderId);
+        await _apiService.cancelTicket(orderId, userId);
         Get.back(); // Close loading dialog
 
         Get.snackbar(
@@ -94,7 +101,6 @@ class LotteryHistoryScreen extends StatelessWidget {
       );
     }
   }
-
   List<Widget> _buildNumberCircles(String numbersString) {
     final List<String> numbers = numbersString.split(',');
     return numbers.map((number) {
@@ -361,22 +367,22 @@ class LotteryHistoryScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (lottery.order_id != null && lottery.order_id!.isNotEmpty)
-                      GestureDetector(
-                        onTap: () => _cancelTicket(lottery.order_id!),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.delete,
-                            color: Colors.red,
-                            size: 20,
-                          ),
-                        ),
-                      ),
+                    // if (lottery.order_id != null && lottery.order_id!.isNotEmpty)
+                    //   GestureDetector(
+                    //     onTap: () => _cancelTicket(lottery.order_id!),
+                    //     child: Container(
+                    //       padding: const EdgeInsets.all(8),
+                    //       decoration: BoxDecoration(
+                    //         color: Colors.red.withOpacity(0.2),
+                    //         shape: BoxShape.circle,
+                    //       ),
+                    //       child: const Icon(
+                    //         Icons.delete,
+                    //         color: Colors.red,
+                    //         size: 20,
+                    //       ),
+                    //     ),
+                    //   ),
                   ],
                 ),
               ),
@@ -433,6 +439,14 @@ class LotteryHistoryScreen extends StatelessWidget {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                     Text(
+                      'id: ${lottery.order_id}',
+                      style: TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 12,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     const Text(

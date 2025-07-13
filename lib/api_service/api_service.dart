@@ -397,13 +397,21 @@ class ApiService {
     }
   }
 
-  // Add this to api_service.dart
-  Future<Map<String, dynamic>> cancelTicket(String orderId) async {
+  Future<Map<String, dynamic>> cancelTicket(String orderId, int userId) async {
     try {
+
       final response = await _dio.request(
-        '$_baseUrl/cancel-tickets/$orderId',
+        '$_baseUrl/cancel-tickets',
         options: Options(method: 'POST'),
+        data: {
+          'order_id': orderId,
+          'user_id': userId.toString(),
+        },
       );
+
+
+
+      print(response.data);
 
       if (response.statusCode == 200) {
         return response.data;
@@ -429,5 +437,4 @@ class ApiService {
       throw 'Ticket cancellation failed: $e';
     }
   }
-
 }

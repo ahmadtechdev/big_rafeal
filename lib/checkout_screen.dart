@@ -224,6 +224,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final String uniqueReceiptId = generateUniqueReceiptId();
 
       final ApiService apiService = ApiService();
+      final apiPrice;
+      if (widget.combinationCode == 6) {
+        apiPrice = double.parse(_currentLottery!.purchasePrice) * 3;
+      } else if ([0, 1, 3].contains(widget.combinationCode)) {
+        apiPrice = double.parse(_currentLottery!.purchasePrice) * 1;
+      } else if ([2, 4, 5].contains(widget.combinationCode)) {
+        apiPrice = double.parse(_currentLottery!.purchasePrice) * 2;
+      } else {
+        apiPrice = double.parse(_currentLottery!.purchasePrice);
+      }
+
+
 
       // Save all tickets to the API with the SAME unique ID
       for (int i = 0; i < widget.selectedNumbers.length; i++) {
@@ -235,7 +247,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             userId: user.id,
             lotteryId: widget.lotteryId,
             selectedNumbers: selectedNumbersStr,
-            purchasePrice: widget.price,
+            purchasePrice: apiPrice,
             category: widget.combinationCode,
             uniqueId: uniqueReceiptId,
           );

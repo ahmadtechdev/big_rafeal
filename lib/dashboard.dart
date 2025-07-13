@@ -304,7 +304,8 @@ class _AnimatedHomeScreenState extends State<AnimatedHomeScreen>
         late final qrScannerService = QRScannerService(
           lotteryController: lotteryController,
         );
-        qrScannerService.openQRScanner(context);
+        // qrScannerService.openQRScanner(context);
+        qrScannerService.showScanOrInputChoice(context);
         break;
       case 5: // Check Winner
         Get.defaultDialog(

@@ -767,7 +767,7 @@ class SalesReportScreen extends StatelessWidget {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'Agent Commission (15%):',
+                      'Agent Commission:',
                       style: pw.TextStyle(
                         fontSize: 9,
                         fontWeight: pw.FontWeight.bold,
@@ -1245,6 +1245,15 @@ class SalesReportScreen extends StatelessWidget {
                                   ),
                                 ),
                               ],
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              '${_reportController.filteredLotteries.length} Tickets',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryColor,
+                              ),
                             ),
                             const SizedBox(height: 20),
 

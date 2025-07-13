@@ -29,6 +29,272 @@ class QRScannerService {
 
   QRScannerService({required this.lotteryController});
 
+  // Add this new method to QRScannerService class
+  Future<void> openManualInput(BuildContext context) async {
+    final TextEditingController orderIdController = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder:
+          (BuildContext modalContext) => SizedBox(
+            height: MediaQuery.of(modalContext).size.height * 0.85,
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        topRight: Radius.circular(24),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.receipt_long, color: Colors.white),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Enter Order ID',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.of(modalContext).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Beautiful input field with animation
+                          TextField(
+                            controller: orderIdController,
+                            decoration: InputDecoration(
+                              labelText: 'Order ID',
+                              hintText: 'Enter your order/ticket ID',
+                              prefixIcon: const Icon(Icons.confirmation_number),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: AppColors.primaryColor,
+                                  width: 2,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Colors.grey[400]!,
+                                  width: 1.5,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: AppColors.primaryColor,
+                                  width: 2,
+                                ),
+                              ),
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.always,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 16,
+                              ),
+                            ),
+                            style: const TextStyle(fontSize: 16),
+                            keyboardType: TextInputType.text,
+                            textInputAction: TextInputAction.done,
+                          ),
+                          const SizedBox(height: 32),
+                          // Submit button with nice animation
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (orderIdController.text.isEmpty) {
+                                  CustomSnackBar.error(
+                                    "Please enter an order ID",
+                                  );
+                                  return;
+                                }
+
+                                Navigator.of(modalContext).pop();
+                                await processQRCode(
+                                  context,
+                                  orderIdController.text,
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryColor,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 4,
+                                shadowColor: AppColors.primaryColor.withOpacity(
+                                  0.3,
+                                ),
+                              ),
+                              child: const Text(
+                                'CHECK RESULTS',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          // Or scan QR code option
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(modalContext).pop();
+                              openQRScanner(context);
+                            },
+                            child: RichText(
+                              text: TextSpan(
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                                children: const [
+                                  TextSpan(text: 'Or '),
+                                  TextSpan(
+                                    text: 'scan QR code',
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  // Add this method to show a choice dialog
+  Future<void> showScanOrInputChoice(BuildContext context) async {
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Check Ticket Results',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              // QR Scan Option
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  openQRScanner(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.qr_code_scanner, size: 24, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text(
+                      'SCAN QR CODE',
+                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Manual Input Option
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  openManualInput(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: AppColors.primaryColor, width: 2),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.keyboard,
+                      size: 24,
+                      color: AppColors.primaryColor,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'ENTER ORDER ID',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> openQRScanner(BuildContext context) async {
     // Reset loading state
     isLoading.value = false;
@@ -142,7 +408,7 @@ class QRScannerService {
     });
   }
 
-  Future<void> processQRCode(BuildContext context, String qrData) async {
+  Future<void> processQRCode(BuildContext context, String inputData) async {
     try {
       // Show loading dialog
       Get.dialog(
@@ -153,20 +419,18 @@ class QRScannerService {
       // Refresh lottery data first
       await lotteryController.fetchLotteries();
 
-      // Parse QR data
-      final Map<String, dynamic>? qrDataMap = _parseQrData(qrData);
-      if (qrDataMap == null || qrDataMap['receipt_id']!.toString().isEmpty) {
-        Get.back(); // Close loading dialog
-        CustomSnackBar.error("The scanned QR code is not valid");
-        return;
+      // Try to parse as QR data first
+      final Map<String, dynamic>? qrDataMap = _parseQrData(inputData);
+      String ticketId;
+
+      if (qrDataMap != null &&
+          qrDataMap['receipt_id']?.toString().isNotEmpty == true) {
+        // This is from QR code
+        ticketId = qrDataMap['receipt_id']!.toString();
+      } else {
+        // This is manual input - use as is
+        ticketId = inputData.trim();
       }
-
-      final String ticketId = qrDataMap['receipt_id']!.toString();
-      // final String ticketId = "52_newuser_1751535371028";
-
-      print("Ahjkasf");
-      print(ticketId);
-
       // Handle the API call
       final response = await apiService.checkTicketResult(ticketId);
 
@@ -195,9 +459,9 @@ class QRScannerService {
         if (response['message'].contains("yet")) {
           _handlePendingResults(response);
         } else {
-
-          CustomSnackBar.error(response['message'] ?? 'An unknown error occurred',);
-
+          CustomSnackBar.error(
+            response['message'] ?? 'An unknown error occurred',
+          );
         }
         return;
       }
@@ -206,15 +470,16 @@ class QRScannerService {
       _handleSuccessfulResult(response);
     } on DioException catch (e) {
       Get.back(); // Close loading dialog
-      CustomSnackBar.error( e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.connectionError
-          ? 'Please check your internet connection'
-          : 'Failed to connect to server', title: "Network Error");
-
+      CustomSnackBar.error(
+        e.type == DioExceptionType.connectionTimeout ||
+                e.type == DioExceptionType.connectionError
+            ? 'Please check your internet connection'
+            : 'Failed to connect to server',
+        title: "Network Error",
+      );
     } catch (e) {
       Get.back(); // Close loading dialog
-      CustomSnackBar.error('An unexpected error occurred',);
-
+      CustomSnackBar.error('An unexpected error occurred');
     } finally {
       isLoading.value = false;
     }
@@ -225,7 +490,7 @@ class QRScannerService {
     final lotteryId = int.tryParse(lotteryIdStr ?? '');
 
     if (lotteryId == null) {
-      CustomSnackBar.error('Invalid lottery information',);
+      CustomSnackBar.error('Invalid lottery information');
 
       return;
     }
@@ -238,7 +503,6 @@ class QRScannerService {
       _showPendingResultsDialog(timeLeft);
     } else {
       CustomSnackBar.error("Lottery information not found");
-
     }
   }
 
@@ -329,11 +593,75 @@ class QRScannerService {
     Lottery lottery,
     String orderId,
   ) {
-    final canClaim = ticketResults.any(
-      (t) =>
-          t['result'].resultType != ResultType.loss &&
-          t['result'].resultType != ResultType.error,
-    );
+    // Filter out only winning tickets
+    final winningTickets =
+        ticketResults
+            .where(
+              (t) =>
+                  t['result'].resultType != ResultType.loss &&
+                  t['result'].resultType != ResultType.error,
+            )
+            .toList();
+
+    // If no winning tickets, show a single message and return
+    if (winningTickets.isEmpty) {
+      Get.dialog(
+        Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.info_outline, size: 60, color: Colors.blue),
+                const SizedBox(height: 16),
+                const Text(
+                  'NO TICKET WINNING',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Better luck next time!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => Get.back(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                  ),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+
+      // Auto close after 15 seconds
+      Future.delayed(const Duration(seconds: 15), () {
+        if (Get.isDialogOpen!) Get.back();
+      });
+
+      return;
+    }
+
+    // For winning tickets, show them with claim/print buttons
+    final RxBool isClaimed = false.obs;
 
     Get.dialog(
       Dialog(
@@ -345,23 +673,16 @@ class QRScannerService {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header with close button
+              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Ticket Results',
+                    'Winning Tickets',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -369,22 +690,22 @@ class QRScannerService {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close),
+                    icon: const Icon(Icons.close),
                     onPressed: () => Get.back(),
                   ),
                 ],
               ),
               const Divider(),
 
-              // Ticket results list
+              // Winning tickets list
               ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(Get.context!).size.height * 0.6,
+                  maxHeight: MediaQuery.of(Get.context!).size.height * 0.5,
                 ),
                 child: SingleChildScrollView(
                   child: Column(
                     children:
-                        ticketResults.map((ticket) {
+                        winningTickets.map((ticket) {
                           final result = ticket['result'] as LotteryResult;
                           return _buildTicketCard(
                             result,
@@ -403,64 +724,57 @@ class QRScannerService {
                 ),
               ),
 
-              // Print and Claim buttons
+              // Buttons section
               Padding(
                 padding: const EdgeInsets.only(top: 16, bottom: 8),
-                child: Column(
-                  // mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        _printResultReceipts(ticketResults, lottery, orderId);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[800],
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.print, color: Colors.white, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            'PRINT ALL',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (canClaim)
-                      ElevatedButton(
-                        onPressed: () => _claimTickets(orderId),
+                child: Obx(() {
+                  return isClaimed.value
+                      ? ElevatedButton(
+                        onPressed: () {
+                          _printResultReceipts(
+                            winningTickets,
+                            lottery,
+                            orderId,
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryColor,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
+                          backgroundColor: Colors.grey[800],
                         ),
-                        child: const Text(
-                          'CLAIM PRIZES',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.print, color: Colors.white, size: 18),
+                            SizedBox(width: 8),
+                            Text('PRINT ALL'),
+                          ],
                         ),
-                      ),
-                  ],
-                ),
+                      )
+                      : ElevatedButton(
+                    onPressed: () async {
+                      // Calculate total prize amount from all winning tickets
+                      final totalPrize = winningTickets.fold(0.0, (sum, ticket) =>
+                      sum + (ticket['result'] as LotteryResult).prizeAmount
+                      );
+
+                      if (totalPrize >= 750) {
+                        CustomSnackBar.error(
+                          "Prizes 750 or greater AED must be claimed at our office with an admin",
+                          duration: 4,
+                        );
+                        return;
+                      }
+
+                      // If prize is under 750, proceed with normal claim
+                      await _claimTickets(orderId);
+                      isClaimed.value = true;
+                      CustomSnackBar.success("Prizes claimed successfully!");
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                    ),
+                    child: const Text('CLAIM PRIZES'),
+                  );
+                }),
               ),
             ],
           ),
@@ -468,6 +782,11 @@ class QRScannerService {
       ),
       barrierDismissible: false,
     );
+
+    // Auto close after 15 seconds
+    Future.delayed(const Duration(seconds: 15), () {
+      if (Get.isDialogOpen!) Get.back();
+    });
   }
 
   Future<void> _printResultReceipts(
@@ -476,7 +795,11 @@ class QRScannerService {
     String orderId,
   ) async {
     try {
-      CustomSnackBar.success("Preparing receipts for printing...", title: "Printing", duration: 1);
+      CustomSnackBar.success(
+        "Preparing receipts for printing...",
+        title: "Printing",
+        duration: 1,
+      );
 
       final pdf = pw.Document();
       final Uint8List? companyLogoData = await _loadCompanyLogo();
@@ -523,11 +846,17 @@ class QRScannerService {
         format: PdfPageFormat.roll80,
       );
 
-      CustomSnackBar.success("Preparing receipts for printing...", title: "Printing", duration: 1);
-
+      CustomSnackBar.success(
+        "Preparing receipts for printing...",
+        title: "Printing",
+        duration: 1,
+      );
     } catch (e) {
-      CustomSnackBar.error("Preparing receipts for printing...", title: "Printing", duration: 3);
-
+      CustomSnackBar.error(
+        "Preparing receipts for printing...",
+        title: "Printing",
+        duration: 3,
+      );
     }
   }
 
@@ -620,7 +949,7 @@ class QRScannerService {
           mainAxisAlignment: pw.MainAxisAlignment.center,
           children: [
             if (companyLogoData != null)
-              pw.Image(pw.MemoryImage(companyLogoData)),
+              pw.Image(pw.MemoryImage(companyLogoData), width: 100, height: 50),
             pw.Column(
               children: [
                 pw.Text(
@@ -806,17 +1135,14 @@ class QRScannerService {
         barrierDismissible: false,
       );
 
-      // Get the current user ID from UserController
       final userController = Get.find<UserController>();
       if (userController.currentUser.value == null) {
-        Get.back(); // Close loading dialog
-        CustomSnackBar.error("User not logged in...", title: "Error", duration: 1);
-
+        Get.back();
+        CustomSnackBar.error("User not logged in");
         return;
       }
 
       final userId = userController.currentUser.value!.id.toString();
-
       final response = await apiService.claimTickets(
         orderId: orderId,
         userId: userId,
@@ -826,15 +1152,12 @@ class QRScannerService {
 
       if (response['success'] == true) {
         CustomSnackBar.success("Prizes claimed successfully!");
-
-        Get.back(); // Close the results dialog
       } else {
         CustomSnackBar.error(response['message'] ?? 'Failed to claim prizes');
       }
     } catch (e) {
-      Get.back(); // Close loading dialog
+      Get.back();
       CustomSnackBar.error("Failed to claim prizes: $e");
-
     }
   }
 
@@ -1596,7 +1919,11 @@ class QRScannerService {
   ) async {
     try {
       // Show printing indicator
-      CustomSnackBar.success("Preparing receipt for printing...", title: "Printing", duration: 1);
+      CustomSnackBar.success(
+        "Preparing receipt for printing...",
+        title: "Printing",
+        duration: 1,
+      );
 
       // Create PDF document
       final pdf = pw.Document();
@@ -1679,8 +2006,8 @@ class QRScannerService {
                 companyLogoData != null
                     ? pw.Image(
                       pw.MemoryImage(companyLogoData),
-                      width: 100,
-                      height: 50,
+                      width: 40,
+                      height: 40,
                     )
                     : pw.Text(
                       'BIG RAFEAL',
@@ -1950,12 +2277,17 @@ class QRScannerService {
         format: PdfPageFormat.roll80,
       );
 
-      CustomSnackBar.success("Receipt printed successfully...", title: "Printing", duration: 1);
-
+      CustomSnackBar.success(
+        "Receipt printed successfully...",
+        title: "Printing",
+        duration: 1,
+      );
     } catch (e) {
-      CustomSnackBar.success("Error printing receipt: $e'", title: "Printing", duration: 3);
-
-
+      CustomSnackBar.success(
+        "Error printing receipt: $e'",
+        title: "Printing",
+        duration: 3,
+      );
     }
   }
 
