@@ -197,7 +197,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final String userId = _currentUser?.id.toString() ?? 'ID';
     final String userName = _currentUser?.name ?? 'USER';
     final int timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '${userId}_${userName}_$timestamp';
+    return '${userId}_$timestamp';
   }
 
   Future<void> _printReceipts() async {

@@ -12,6 +12,7 @@ import '../api_service/api_service.dart';
 import '../controllers/lottery_controller.dart';
 import '../controllers/lottery_result_controller.dart';
 import '../controllers/user_controller.dart';
+import '../dashboard.dart';
 import '../models/lottery_model.dart';
 import '../utils/app_colors.dart';
 import '../utils/custom_snackbar.dart';
@@ -846,11 +847,16 @@ class QRScannerService {
         format: PdfPageFormat.roll80,
       );
 
+
+      // Close the dialog after printing is complete
+      Get.offAll(()=> AnimatedHomeScreen());
+
       CustomSnackBar.success(
         "Preparing receipts for printing...",
         title: "Printing",
         duration: 1,
       );
+
     } catch (e) {
       CustomSnackBar.error(
         "Preparing receipts for printing...",

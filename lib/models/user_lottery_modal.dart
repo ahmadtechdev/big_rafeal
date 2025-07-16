@@ -10,6 +10,7 @@ class UserLottery {
   final String lotteryIssueDate;
   final String selectedNumbers;
   final String wOrL; // WIN or LOSS
+  final String claimed_at; // WIN or LOSS
   final String endDate;
   final String? category;
   final String? order_id;
@@ -26,6 +27,7 @@ class UserLottery {
     required this.lotteryIssueDate,
     required this.selectedNumbers,
     required this.wOrL,
+    required this.claimed_at,
     required this.endDate,
     this.category,
     this.order_id,
@@ -44,6 +46,7 @@ class UserLottery {
       lotteryIssueDate: json['lottery_issue_date'] ?? '',
       selectedNumbers: json['selected_numbers'] ?? '',
       wOrL: json['w_or_l'] ?? 'LOSS',
+      claimed_at: json['claimed_at'] ?? "",
       endDate: json['end_date'] ?? '',
       category: json['category']?.toString() ?? '',
       order_id: json['order_id']?.toString() ?? '',
@@ -63,6 +66,7 @@ class UserLottery {
       'lottery_issue_date': lotteryIssueDate,
       'selected_numbers': selectedNumbers,
       'w_or_l': wOrL,
+      'claimed_at': claimed_at,
       'end_date': endDate,
       'category': category,
       'order_id': order_id,

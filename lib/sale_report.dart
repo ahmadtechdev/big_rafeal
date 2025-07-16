@@ -406,7 +406,7 @@ class SalesReportScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'ID: ${userLottery.ticketId}',
+                                  'ID: ${userLottery.order_id}',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textGrey,

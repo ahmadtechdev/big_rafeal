@@ -11,8 +11,10 @@ class SalesReportController extends GetxController {
   final UserController _userController = Get.find();
 
   // Observable variables
-  final startDate = DateTime.now().subtract(const Duration(days: 10)).obs;
-  final endDate = DateTime.now().obs;
+  // final startDate = DateTime.now().subtract(const Duration(days: 10)).obs;
+  // final endDate = DateTime.now().obs;
+  final startDate = DateTime.now().obs;
+  final endDate = DateTime.now().add(const Duration(days: 1)).obs;
   final totalSales = 0.0.obs;
   final totalWinnings = 0.0.obs;
   final userCommission = 0.0.obs;

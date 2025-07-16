@@ -8,7 +8,6 @@ import '../utils/app_colors.dart';
 import '../models/user_lottery_modal.dart';
 import 'api_service/api_service.dart';
 
-
 class LotteryHistoryScreen extends StatelessWidget {
   final LotterySaleController _saleController = Get.put(LotterySaleController());
   final UserController _userController = Get.find<UserController>();
@@ -31,6 +30,16 @@ class LotteryHistoryScreen extends StatelessWidget {
       return DateFormat('MMM dd, yyyy').format(dateTime);
     } catch (e) {
       return dateString;
+    }
+  }
+
+  String _formatClaimTime(String? claimedAt) {
+    if (claimedAt == null || claimedAt.isEmpty) return '';
+    try {
+      final DateTime dateTime = DateTime.parse(claimedAt);
+      return DateFormat('MMM dd, yyyy - hh:mm a').format(dateTime);
+    } catch (e) {
+      return claimedAt;
     }
   }
 
@@ -101,6 +110,7 @@ class LotteryHistoryScreen extends StatelessWidget {
       );
     }
   }
+
   List<Widget> _buildNumberCircles(String numbersString) {
     final List<String> numbers = numbersString.split(',');
     return numbers.map((number) {
@@ -124,6 +134,21 @@ class LotteryHistoryScreen extends StatelessWidget {
         ),
       );
     }).toList();
+  }
+
+  // Group tickets by order_id
+  Map<String, List<UserLottery>> _groupTicketsByOrderId(List<UserLottery> tickets) {
+    final Map<String, List<UserLottery>> groupedTickets = {};
+
+    for (final ticket in tickets) {
+      final orderId = ticket.order_id ?? 'no_order_id_${ticket.id}';
+      if (!groupedTickets.containsKey(orderId)) {
+        groupedTickets[orderId] = [];
+      }
+      groupedTickets[orderId]!.add(ticket);
+    }
+
+    return groupedTickets;
   }
 
   @override
@@ -289,12 +314,17 @@ class LotteryHistoryScreen extends StatelessWidget {
                     ),
                   );
                 } else {
+                  // Group tickets by order_id
+                  final groupedTickets = _groupTicketsByOrderId(todayTickets);
+                  final orderIds = groupedTickets.keys.toList();
+
                   return ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    itemCount: todayTickets.length,
+                    itemCount: orderIds.length,
                     itemBuilder: (context, index) {
-                      final lottery = todayTickets[index];
-                      return _buildLotteryCard(lottery, index);
+                      final orderId = orderIds[index];
+                      final ticketsForOrder = groupedTickets[orderId]!;
+                      return _buildOrderCard(ticketsForOrder, index);
                     },
                   );
                 }
@@ -306,7 +336,20 @@ class LotteryHistoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLotteryCard(UserLottery lottery, int index) {
+  Widget _buildOrderCard(List<UserLottery> tickets, int index) {
+    final firstTicket = tickets.first;
+    final bool isClaimed = firstTicket.wOrL.toLowerCase().contains('claim');
+
+    // Calculate total win amount for all tickets in this order
+    double totalWinAmount = 0;
+    for (final ticket in tickets) {
+      if (ticket.winAmount is String) {
+        totalWinAmount += double.tryParse(ticket.winAmount.toString()) ?? 0;
+      } else {
+        totalWinAmount += ticket.winAmount;
+      }
+    }
+
     return AnimatedOpacity(
       opacity: 1.0,
       duration: const Duration(milliseconds: 500),
@@ -355,7 +398,7 @@ class LotteryHistoryScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            lottery.lotteryName,
+                            firstTicket.lotteryName,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -367,22 +410,26 @@ class LotteryHistoryScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // if (lottery.order_id != null && lottery.order_id!.isNotEmpty)
-                    //   GestureDetector(
-                    //     onTap: () => _cancelTicket(lottery.order_id!),
-                    //     child: Container(
-                    //       padding: const EdgeInsets.all(8),
-                    //       decoration: BoxDecoration(
-                    //         color: Colors.red.withOpacity(0.2),
-                    //         shape: BoxShape.circle,
-                    //       ),
-                    //       child: const Icon(
-                    //         Icons.delete,
-                    //         color: Colors.red,
-                    //         size: 20,
-                    //       ),
-                    //     ),
-                    //   ),
+                    // Show CLAIMED text if wOrL contains 'claim'
+                    if (isClaimed)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'CLAIMED',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -407,7 +454,7 @@ class LotteryHistoryScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                _formatDate(lottery.lotteryIssueDate),
+                                _formatDate(firstTicket.lotteryIssueDate),
                                 style: const TextStyle(
                                   color: AppColors.textDark,
                                   fontWeight: FontWeight.w500,
@@ -416,38 +463,54 @@ class LotteryHistoryScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                'Price',
-                                style: TextStyle(
-                                  color: AppColors.textGrey,
-                                  fontSize: 12,
+                        // Only show win amount if it's greater than 0
+                        if (totalWinAmount > 0)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                const Text(
+                                  'Total Win Amount',
+                                  style: TextStyle(
+                                    color: AppColors.textGrey,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'AED ${lottery.purchasePrice}',
-                                style: const TextStyle(
-                                  color: AppColors.textDark,
-                                  fontWeight: FontWeight.w500,
+                                const SizedBox(height: 4),
+                                Text(
+                                  'AED ${totalWinAmount.toStringAsFixed(totalWinAmount.truncateToDouble() == totalWinAmount ? 0 : 2)}',
+                                  style: const TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                     Text(
-                      'id: ${lottery.order_id}',
-                      style: TextStyle(
+                    Text(
+                      'Order ID: ${firstTicket.order_id}',
+                      style: const TextStyle(
                         color: AppColors.textGrey,
                         fontSize: 12,
                       ),
                     ),
+
+                    // Show claim time if ticket is claimed
+                    if (firstTicket.claimed_at != null && firstTicket.claimed_at!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Claimed at: ${_formatClaimTime(firstTicket.claimed_at)}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 16),
                     const Text(
                       'Selected Numbers',
@@ -457,11 +520,42 @@ class LotteryHistoryScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _buildNumberCircles(lottery.selectedNumbers),
-                      ),
+
+                    // Show all selected numbers from all tickets in this order
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: tickets.map((ticket) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Ticket ${ticket.ticketId}:',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.primaryColor,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ..._buildNumberCircles(ticket.selectedNumbers),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ],
                 ),
