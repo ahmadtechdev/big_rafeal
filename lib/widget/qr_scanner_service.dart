@@ -453,7 +453,7 @@ class QRScannerService {
             title: Text('Big Rafeal'),
             content: Text(response['message']),
             actions: [
-              TextButton(onPressed: () => Get.back(), child: Text('OK')),
+              TextButton(onPressed: () => Get.back(), child: Text('OK', style: TextStyle(color: Colors.white),)),
             ],
           ),
         );
@@ -589,20 +589,66 @@ class QRScannerService {
     );
   }
 
+// Updated _claimTickets method to return success status and message
+  Future<Map<String, dynamic>> _claimTickets(String orderId) async {
+    try {
+      Get.dialog(
+        const Center(child: CircularProgressIndicator()),
+        barrierDismissible: false,
+      );
+
+      final userController = Get.find<UserController>();
+      if (userController.currentUser.value == null) {
+        Get.back();
+        return {
+          'success': false,
+          'message': 'User not logged in'
+        };
+      }
+
+      final userId = userController.currentUser.value!.id.toString();
+      final response = await apiService.claimTickets(
+        orderId: orderId,
+        userId: userId,
+      );
+
+      Get.back(); // Close loading dialog
+
+      if (response['success'] == true) {
+        return {
+          'success': true,
+          'message': 'Prizes claimed successfully!'
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response['message'] ?? 'Failed to claim prizes'
+        };
+      }
+    } catch (e) {
+      Get.back();
+      return {
+        'success': false,
+        'message': 'Failed to claim prizes: $e'
+      };
+    }
+  }
+
+// Updated _showResultsDialog method
   void _showResultsDialog(
-    List<Map<String, dynamic>> ticketResults,
-    Lottery lottery,
-    String orderId,
-  ) {
+      List<Map<String, dynamic>> ticketResults,
+      Lottery lottery,
+      String orderId,
+      ) {
     // Filter out only winning tickets
     final winningTickets =
-        ticketResults
-            .where(
-              (t) =>
-                  t['result'].resultType != ResultType.loss &&
-                  t['result'].resultType != ResultType.error,
-            )
-            .toList();
+    ticketResults
+        .where(
+          (t) =>
+      t['result'].resultType != ResultType.loss &&
+          t['result'].resultType != ResultType.error,
+    )
+        .toList();
 
     // If no winning tickets, show a single message and return
     if (winningTickets.isEmpty) {
@@ -644,7 +690,7 @@ class QRScannerService {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryColor,
                   ),
-                  child: const Text('OK'),
+                  child: const Text('OK', style: TextStyle(color: Colors.white),),
                 ),
               ],
             ),
@@ -663,6 +709,8 @@ class QRScannerService {
 
     // For winning tickets, show them with claim/print buttons
     final RxBool isClaimed = false.obs;
+    final RxString claimMessage = ''.obs;
+    final RxBool showClaimError = false.obs;
 
     Get.dialog(
       Dialog(
@@ -706,51 +754,86 @@ class QRScannerService {
                 child: SingleChildScrollView(
                   child: Column(
                     children:
-                        winningTickets.map((ticket) {
-                          final result = ticket['result'] as LotteryResult;
-                          return _buildTicketCard(
-                            result,
-                            lottery,
-                            ticket['selectedNumbers'],
-                            ticket['winningNumbers'],
-                            ticket['sequenceMatched'],
-                            ticket['rumbleMatched'],
-                            ticket['chanceMatched'],
-                            ticket['seqWin'],
-                            ticket['rumWin'],
-                            ticket['chaWin'],
-                          );
-                        }).toList(),
+                    winningTickets.map((ticket) {
+                      final result = ticket['result'] as LotteryResult;
+                      return _buildTicketCard(
+                        result,
+                        lottery,
+                        ticket['selectedNumbers'],
+                        ticket['winningNumbers'],
+                        ticket['sequenceMatched'],
+                        ticket['rumbleMatched'],
+                        ticket['chanceMatched'],
+                        ticket['seqWin'],
+                        ticket['rumWin'],
+                        ticket['chaWin'],
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
 
-              // Buttons section
+              // Buttons/Message section
               Padding(
                 padding: const EdgeInsets.only(top: 16, bottom: 8),
                 child: Obx(() {
-                  return isClaimed.value
-                      ? ElevatedButton(
-                        onPressed: () {
-                          _printResultReceipts(
-                            winningTickets,
-                            lottery,
-                            orderId,
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[800],
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.print, color: Colors.white, size: 18),
-                            SizedBox(width: 8),
-                            Text('PRINT ALL'),
-                          ],
-                        ),
-                      )
-                      : ElevatedButton(
+                  // If there's a claim error, show error message
+                  if (showClaimError.value) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red[200]!),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Colors.red[600],
+                            size: 24,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            claimMessage.value,
+                            style: TextStyle(
+                              color: Colors.red[700],
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // If successfully claimed, show print button
+                  if (isClaimed.value) {
+                    return ElevatedButton(
+                      onPressed: () {
+                        _printResultReceipts(
+                          winningTickets,
+                          lottery,
+                          orderId,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey[800],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.print, color: Colors.white, size: 18),
+                          SizedBox(width: 8),
+                          Text('PRINT ALL', style: TextStyle(color: Colors.white),),
+                        ],
+                      ),
+                    );
+                  }
+
+                  // Default state: show claim button
+                  return ElevatedButton(
                     onPressed: () async {
                       // Calculate total prize amount from all winning tickets
                       final totalPrize = winningTickets.fold(0.0, (sum, ticket) =>
@@ -766,14 +849,20 @@ class QRScannerService {
                       }
 
                       // If prize is under 750, proceed with normal claim
-                      await _claimTickets(orderId);
-                      isClaimed.value = true;
-                      CustomSnackBar.success("Prizes claimed successfully!");
+                      final claimResult = await _claimTickets(orderId);
+
+                      if (claimResult['success'] == true) {
+                        isClaimed.value = true;
+                        CustomSnackBar.success(claimResult['message']);
+                      } else {
+                        showClaimError.value = true;
+                        claimMessage.value = claimResult['message'];
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryColor,
                     ),
-                    child: const Text('CLAIM PRIZES'),
+                    child: const Text('CLAIM PRIZES', style: TextStyle(color: Colors.white),),
                   );
                 }),
               ),
@@ -1134,38 +1223,7 @@ class QRScannerService {
     );
   }
 
-  Future<void> _claimTickets(String orderId) async {
-    try {
-      Get.dialog(
-        const Center(child: CircularProgressIndicator()),
-        barrierDismissible: false,
-      );
 
-      final userController = Get.find<UserController>();
-      if (userController.currentUser.value == null) {
-        Get.back();
-        CustomSnackBar.error("User not logged in");
-        return;
-      }
-
-      final userId = userController.currentUser.value!.id.toString();
-      final response = await apiService.claimTickets(
-        orderId: orderId,
-        userId: userId,
-      );
-
-      Get.back(); // Close loading dialog
-
-      if (response['success'] == true) {
-        CustomSnackBar.success("Prizes claimed successfully!");
-      } else {
-        CustomSnackBar.error(response['message'] ?? 'Failed to claim prizes');
-      }
-    } catch (e) {
-      Get.back();
-      CustomSnackBar.error("Failed to claim prizes: $e");
-    }
-  }
 
   Widget _buildTicketCard(
     LotteryResult result,
@@ -1355,7 +1413,7 @@ class QRScannerService {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('OK'),
+              child: const Text('OK', style: TextStyle(color: Colors.white),),
             ),
           ],
         );
@@ -2446,7 +2504,7 @@ class QRScannerService {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
+              child: const Text('OK', style: TextStyle(color: Colors.white),),
             ),
           ],
         );

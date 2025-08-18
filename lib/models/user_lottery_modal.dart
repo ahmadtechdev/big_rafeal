@@ -36,7 +36,7 @@ class UserLottery {
   factory UserLottery.fromJson(Map<String, dynamic> json) {
     return UserLottery(
       id: json['id'] ?? 0,
-      userId: int.parse(json['user_id']),
+      userId: json['user_id'] is String ? int.parse(json['user_id']) : json['user_id'] ?? 0,
       lotteryId: json['lottery_id']?.toString() ?? '',
       ticketId: json['ticket_id']?.toString() ?? '',
       lotteryName: json['lottery_name'] ?? '',
@@ -52,7 +52,6 @@ class UserLottery {
       order_id: json['order_id']?.toString() ?? '',
     );
   }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,

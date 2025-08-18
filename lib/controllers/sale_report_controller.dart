@@ -45,7 +45,7 @@ class SalesReportController extends GetxController {
 
     try {
       // Format dates for API
-      final fromDate = DateFormat('yyyy-MM-dd').format(startDate.value);
+      final fromDate = DateFormat('yyyy-MM-dd').format( startDate.value);
       final toDate = DateFormat('yyyy-MM-dd').format(endDate.value);
 
       final response = await _apiService.fetchSalesReport(
@@ -61,6 +61,7 @@ class SalesReportController extends GetxController {
         throw response['message'] ?? 'Failed to load report';
       }
     } catch (e) {
+      print(e.toString());
       hasError.value = true;
       errorMessage.value = e.toString();
     } finally {
@@ -69,7 +70,7 @@ class SalesReportController extends GetxController {
   }
 
   void _updateFromResponse(Map<String, dynamic> data) {
-    // Update totals
+    // Update totals with proper type conversion
     totalSales.value = (data['total_sales'] as num).toDouble();
     totalWinnings.value = (data['total_winnings'] as num).toDouble();
     userCommission.value = (data['user_commission'] as num).toDouble();
