@@ -179,14 +179,37 @@ class _LotteryNumberSelectionScreenState
   void _selectNumber(int number) {
     setState(() {
       List<int> currentRowNumbers = selectedNumbersRows[activeRowIndex];
-      if (currentRowNumbers.length < widget.numbersPerRow) {
-        currentRowNumbers.add(number);
+
+      // Check if we need to enforce unique numbers (numbersPerRow == 6 and maxNumber <= 25)
+      bool enforceUnique = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+
+      if (enforceUnique) {
+        // Check if the number is already selected in any row
+        bool isNumberUsed = selectedNumbersRows.any((row) => row.contains(number));
+
+        if (!isNumberUsed && currentRowNumbers.length < widget.numbersPerRow) {
+          currentRowNumbers.add(number);
+        } else if (isNumberUsed) {
+          // Show a snackbar if the number is already used
+          Get.snackbar(
+            'Duplicate Number',
+            'This number has already been selected in another row',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+          );
+        }
+      } else {
+        // Original behavior for other cases
+        if (currentRowNumbers.length < widget.numbersPerRow) {
+          currentRowNumbers.add(number);
+        }
       }
+
       selectedNumbersRows[activeRowIndex] = currentRowNumbers;
     });
     _animationController.forward(from: 0.0);
   }
-
   void _clearSelection() {
     setState(() {
       if (selectedNumbersRows[activeRowIndex].isNotEmpty) {
@@ -200,8 +223,28 @@ class _LotteryNumberSelectionScreenState
     setState(() {
       final startNumber = widget.maxNumber < 10 ? 0 : 1;
       List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
-      availableNumbers.shuffle();
-      selectedNumbersRows[activeRowIndex] = availableNumbers.take(widget.numbersPerRow).toList();
+
+      // Check if we need to enforce unique numbers
+      bool enforceUnique = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+
+      if (enforceUnique) {
+        // Get all currently used numbers across all rows
+        Set<int> usedNumbers = {};
+        for (var row in selectedNumbersRows) {
+          usedNumbers.addAll(row);
+        }
+
+        // Remove used numbers from available numbers
+        availableNumbers.removeWhere((num) => usedNumbers.contains(num));
+
+        // Shuffle and take the needed amount
+        availableNumbers.shuffle();
+        selectedNumbersRows[activeRowIndex] = availableNumbers.take(widget.numbersPerRow).toList();
+      } else {
+        // Original behavior for other cases
+        availableNumbers.shuffle();
+        selectedNumbersRows[activeRowIndex] = availableNumbers.take(widget.numbersPerRow).toList();
+      }
     });
     _animationController.forward(from: 0.0);
   }
@@ -209,15 +252,41 @@ class _LotteryNumberSelectionScreenState
   void _quickPickAll() {
     setState(() {
       final startNumber = widget.maxNumber < 10 ? 0 : 1;
-      for (int i = 0; i < selectedNumbersRows.length; i++) {
-        List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
-        availableNumbers.shuffle();
-        selectedNumbersRows[i] = availableNumbers.take(widget.numbersPerRow).toList();
+
+      // Check if we need to enforce unique numbers
+      bool enforceUnique = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+
+      if (enforceUnique) {
+        // Create a list of all available numbers
+        List<int> allNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
+        allNumbers.shuffle();
+
+        // Reset all rows
+        for (int i = 0; i < selectedNumbersRows.length; i++) {
+          selectedNumbersRows[i] = [];
+        }
+
+        // Distribute numbers ensuring no duplicates
+        int currentIndex = 0;
+        for (int i = 0; i < selectedNumbersRows.length; i++) {
+          for (int j = 0; j < widget.numbersPerRow; j++) {
+            if (currentIndex < allNumbers.length) {
+              selectedNumbersRows[i].add(allNumbers[currentIndex]);
+              currentIndex++;
+            }
+          }
+        }
+      } else {
+        // Original behavior for other cases
+        for (int i = 0; i < selectedNumbersRows.length; i++) {
+          List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
+          availableNumbers.shuffle();
+          selectedNumbersRows[i] = availableNumbers.take(widget.numbersPerRow).toList();
+        }
       }
     });
     _animationController.forward(from: 0.0);
   }
-
   void _increaseRowCount() {
     setState(() {
       if (widget.rowCount < 10) {
