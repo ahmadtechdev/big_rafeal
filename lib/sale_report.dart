@@ -881,7 +881,7 @@ class SalesReportScreen extends StatelessWidget {
                   ),
                 ),
                 pw.Text(
-                  'Agent Commission: 15%',
+                  'Agent Commission:',
                   style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
@@ -1301,7 +1301,7 @@ class SalesReportScreen extends StatelessWidget {
                                   children: [
                                     Expanded(
                                       child: _buildSummaryItem(
-                                        title: 'Commission (15%)',
+                                        title: 'Commission',
                                         value: _reportController
                                             .userCommission
                                             .value

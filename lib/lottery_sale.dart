@@ -464,29 +464,29 @@ class LotteryHistoryScreen extends StatelessWidget {
                           ),
                         ),
                         // Only show win amount if it's greater than 0
-                        if (totalWinAmount > 0)
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text(
-                                  'Total Win Amount',
-                                  style: TextStyle(
-                                    color: AppColors.textGrey,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'AED ${totalWinAmount.toStringAsFixed(totalWinAmount.truncateToDouble() == totalWinAmount ? 0 : 2)}',
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        // if (totalWinAmount > 0)
+                        //   Expanded(
+                        //     child: Column(
+                        //       crossAxisAlignment: CrossAxisAlignment.end,
+                        //       children: [
+                        //         const Text(
+                        //           'Total Win Amount',
+                        //           style: TextStyle(
+                        //             color: AppColors.textGrey,
+                        //             fontSize: 12,
+                        //           ),
+                        //         ),
+                        //         const SizedBox(height: 4),
+                        //         Text(
+                        //           'AED ${totalWinAmount.toStringAsFixed(totalWinAmount.truncateToDouble() == totalWinAmount ? 0 : 2)}',
+                        //           style: const TextStyle(
+                        //             color: Colors.green,
+                        //             fontWeight: FontWeight.w500,
+                        //           ),
+                        //         ),
+                        //       ],
+                        //     ),
+                        //   ),
                       ],
                     ),
                     const SizedBox(height: 16),
