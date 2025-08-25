@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
     final UserController userController = Get.find<UserController>();
 
     return GetMaterialApp(
-      title: 'Big Rereal',
+      title: 'Big Rafael',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.purple,

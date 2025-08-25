@@ -20,15 +20,26 @@ import 'scanner_classes.dart';
 
 class QRScannerService {
   final LotteryController lotteryController;
-  final MobileScannerController scannerController = MobileScannerController();
+  MobileScannerController? scannerController; // Make nullable
   final ApiService apiService = Get.put(ApiService());
   final LotteryResultController resultController =
-      Get.find<LotteryResultController>();
+  Get.find<LotteryResultController>();
 
   // Create a RxBool to track loading state
   final RxBool isLoading = false.obs;
+  final RxBool isScannerActive = false.obs; // Add scanner state tracking
 
   QRScannerService({required this.lotteryController});
+
+  // Add method to initialize scanner
+  void _initializeScanner() {
+    scannerController?.dispose();
+    scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
+  }
 
   // Add this new method to QRScannerService class
   Future<void> openManualInput(BuildContext context) async {
@@ -296,66 +307,106 @@ class QRScannerService {
     );
   }
 
+  // Update the openQRScanner method
   Future<void> openQRScanner(BuildContext context) async {
-    // Reset loading state
+    // Reset loading state and initialize scanner
     isLoading.value = false;
+    isScannerActive.value = false;
+    _initializeScanner();
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder:
-          (BuildContext modalContext) => SizedBox(
-            height: MediaQuery.of(modalContext).size.height * 0.85,
-            child: Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+      builder: (BuildContext modalContext) => SizedBox(
+        height: MediaQuery.of(modalContext).size.height * 0.85,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
                 ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        topRight: Radius.circular(24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.qr_code_scanner, color: Colors.white),
+                    const SizedBox(width: 12),
+                    const Text(
+                      'Scan Your Ticket',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.qr_code_scanner, color: Colors.white),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Scan Your Ticket',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () {
-                            scannerController.stop();
-                            Navigator.of(modalContext).pop();
-                          },
-                        ),
-                      ],
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () {
+                        _stopScanner();
+                        Navigator.of(modalContext).pop();
+                      },
                     ),
-                  ),
-                  Expanded(
-                    child: Stack(
-                      children: [
-                        // Scanner
-                        MobileScanner(
-                          controller: scannerController,
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Scanner with proper initialization
+                    FutureBuilder(
+                      future: _startScanner(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        if (snapshot.hasError || scannerController == null) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.camera_alt_outlined,
+                                  size: 64,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Camera initialization failed',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(modalContext).pop();
+                                    openManualInput(context);
+                                  },
+                                  child: const Text('Enter Order ID Instead'),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Obx(() => isScannerActive.value
+                            ? MobileScanner(
+                          controller: scannerController!,
                           onDetect: (capture) {
                             final List<Barcode> barcodes = capture.barcodes;
                             if (barcodes.isNotEmpty &&
@@ -364,51 +415,94 @@ class QRScannerService {
                               if (isLoading.value) return;
 
                               isLoading.value = true;
+                              isScannerActive.value = false;
 
                               // Close the scanner
-                              scannerController.stop();
+                              _stopScanner();
                               Navigator.pop(modalContext);
 
                               // Process the scanned QR code
-                              // We pass the original context, not modalContext
                               processQRCode(context, barcodes.first.rawValue!);
                             }
                           },
-                        ),
-                        // Overlay with scanning frame
-                        CustomPaint(
-                          size: Size(
-                            MediaQuery.of(modalContext).size.width,
-                            MediaQuery.of(modalContext).size.height,
-                          ),
-                          painter: ScannerOverlayPainter(),
-                        ),
-                        // Scanning animation
-                        ScannerAnimation(),
-                      ],
+                        )
+                            : const Center(
+                          child: CircularProgressIndicator(),
+                        ));
+                      },
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 24,
-                      horizontal: 24,
-                    ),
-                    child: Text(
-                      'Position the QR code inside the box to check your ticket',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[700], fontSize: 16),
-                    ),
-                  ),
-                ],
+
+                    // Overlay with scanning frame (only show when scanner is active)
+                    Obx(() => isScannerActive.value
+                        ? CustomPaint(
+                      size: Size(
+                        MediaQuery.of(modalContext).size.width,
+                        MediaQuery.of(modalContext).size.height,
+                      ),
+                      painter: ScannerOverlayPainter(),
+                    )
+                        : const SizedBox()),
+
+                    // Scanning animation (only show when scanner is active)
+                    Obx(() => isScannerActive.value
+                        ? ScannerAnimation()
+                        : const SizedBox()),
+                  ],
+                ),
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 24,
+                ),
+                child: Text(
+                  'Position the QR code inside the box to check your ticket',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey[700], fontSize: 16),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
     ).then((_) {
       // Make sure scanner is stopped when bottom sheet is closed
-      scannerController.stop();
+      _stopScanner();
     });
   }
 
+  // Add method to start scanner with proper error handling
+  Future<void> _startScanner() async {
+    try {
+      if (scannerController != null) {
+        await scannerController!.start();
+        // Small delay to ensure camera is fully initialized
+        await Future.delayed(const Duration(milliseconds: 500));
+        isScannerActive.value = true;
+      }
+    } catch (e) {
+      print('Scanner start error: $e');
+      isScannerActive.value = false;
+      rethrow;
+    }
+  }
+
+  // Add method to properly stop scanner
+  void _stopScanner() {
+    try {
+      isScannerActive.value = false;
+      scannerController?.stop();
+    } catch (e) {
+      print('Scanner stop error: $e');
+    }
+  }
+
+  // Add dispose method to clean up resources
+  void dispose() {
+    _stopScanner();
+    scannerController?.dispose();
+    scannerController = null;
+  }
   Future<void> processQRCode(BuildContext context, String inputData) async {
     try {
       // Show loading dialog

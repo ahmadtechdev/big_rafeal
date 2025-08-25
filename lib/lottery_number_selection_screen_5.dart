@@ -134,6 +134,9 @@ class _LotteryNumberSelectionScreenState
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+
+    // DO NOT set any default category selection
+    // Let user explicitly choose categories
   }
 
   // Helper method to parse both date formats
@@ -180,28 +183,26 @@ class _LotteryNumberSelectionScreenState
     setState(() {
       List<int> currentRowNumbers = selectedNumbersRows[activeRowIndex];
 
-      // Check if we need to enforce unique numbers (numbersPerRow == 6 and maxNumber <= 25)
-      bool enforceUnique = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+      // Check if we need to enforce unique numbers within the same row only
+      bool enforceUniqueInRow = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
 
-      if (enforceUnique) {
-        // Check if the number is already selected in any row
-        bool isNumberUsed = selectedNumbersRows.any((row) => row.contains(number));
-
-        if (!isNumberUsed && currentRowNumbers.length < widget.numbersPerRow) {
+      if (enforceUniqueInRow) {
+        // Check if the number is already selected in the CURRENT row only
+        if (!currentRowNumbers.contains(number) && currentRowNumbers.length < widget.numbersPerRow) {
           currentRowNumbers.add(number);
-        } else if (isNumberUsed) {
-          // Show a snackbar if the number is already used
+        } else if (currentRowNumbers.contains(number)) {
+          // Show a snackbar if the number is already used in the current row
           Get.snackbar(
             'Duplicate Number',
-            'This number has already been selected in another row',
+            'This number has already been selected in this row',
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.orange,
             colorText: Colors.white,
           );
         }
       } else {
-        // Original behavior for other cases
-        if (currentRowNumbers.length < widget.numbersPerRow) {
+        // Original behavior for other cases - no duplicate check
+        if (currentRowNumbers.length < widget.numbersPerRow && !currentRowNumbers.contains(number)) {
           currentRowNumbers.add(number);
         }
       }
@@ -224,24 +225,23 @@ class _LotteryNumberSelectionScreenState
       final startNumber = widget.maxNumber < 10 ? 0 : 1;
       List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
 
-      // Check if we need to enforce unique numbers
-      bool enforceUnique = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+      // Check if we need to enforce unique numbers within the same row
+      bool enforceUniqueInRow = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
 
-      if (enforceUnique) {
-        // Get all currently used numbers across all rows
-        Set<int> usedNumbers = {};
-        for (var row in selectedNumbersRows) {
-          usedNumbers.addAll(row);
-        }
-
-        // Remove used numbers from available numbers
-        availableNumbers.removeWhere((num) => usedNumbers.contains(num));
+      if (enforceUniqueInRow) {
+        // Only avoid numbers already selected in the current row
+        List<int> currentRowNumbers = selectedNumbersRows[activeRowIndex];
+        availableNumbers.removeWhere((num) => currentRowNumbers.contains(num));
 
         // Shuffle and take the needed amount
         availableNumbers.shuffle();
-        selectedNumbersRows[activeRowIndex] = availableNumbers.take(widget.numbersPerRow).toList();
+        int numbersNeeded = widget.numbersPerRow - currentRowNumbers.length;
+        selectedNumbersRows[activeRowIndex] = [
+          ...currentRowNumbers,
+          ...availableNumbers.take(numbersNeeded)
+        ];
       } else {
-        // Original behavior for other cases
+        // Original behavior - completely replace current row selection
         availableNumbers.shuffle();
         selectedNumbersRows[activeRowIndex] = availableNumbers.take(widget.numbersPerRow).toList();
       }
@@ -253,28 +253,15 @@ class _LotteryNumberSelectionScreenState
     setState(() {
       final startNumber = widget.maxNumber < 10 ? 0 : 1;
 
-      // Check if we need to enforce unique numbers
-      bool enforceUnique = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+      // Check if we need to enforce unique numbers within each row (but allow duplicates across rows)
+      bool enforceUniqueInRow = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
 
-      if (enforceUnique) {
-        // Create a list of all available numbers
-        List<int> allNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
-        allNumbers.shuffle();
-
-        // Reset all rows
+      if (enforceUniqueInRow) {
+        // For each row, pick unique numbers within that row, but allow duplicates across rows
         for (int i = 0; i < selectedNumbersRows.length; i++) {
-          selectedNumbersRows[i] = [];
-        }
-
-        // Distribute numbers ensuring no duplicates
-        int currentIndex = 0;
-        for (int i = 0; i < selectedNumbersRows.length; i++) {
-          for (int j = 0; j < widget.numbersPerRow; j++) {
-            if (currentIndex < allNumbers.length) {
-              selectedNumbersRows[i].add(allNumbers[currentIndex]);
-              currentIndex++;
-            }
-          }
+          List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
+          availableNumbers.shuffle();
+          selectedNumbersRows[i] = availableNumbers.take(widget.numbersPerRow).toList();
         }
       } else {
         // Original behavior for other cases
@@ -779,10 +766,7 @@ class _LotteryNumberSelectionScreenState
                         (value) {
                       setState(() {
                         sequenceSelected = value;
-                        // Ensure at least one category is selected
-                        if (!sequenceSelected && !rumbleSelected && !chanceSelected) {
-                          sequenceSelected = true;
-                        }
+
                       });
                     },
                   ),
@@ -794,16 +778,7 @@ class _LotteryNumberSelectionScreenState
                         (value) {
                       setState(() {
                         rumbleSelected = value;
-                        if (!sequenceSelected && !rumbleSelected && !chanceSelected) {
-                          // Default to first available category
-                          if (canSelectSequence) {
-                            sequenceSelected = true;
-                          } else if (canSelectRumble) {
-                            rumbleSelected = true;
-                          } else if (canSelectChance) {
-                            chanceSelected = true;
-                          }
-                        }
+
                       });
                     },
                   ),
@@ -816,16 +791,7 @@ class _LotteryNumberSelectionScreenState
                         (value) {
                       setState(() {
                         chanceSelected = value;
-                        if (!sequenceSelected && !rumbleSelected && !chanceSelected) {
-                          // Default to first available category
-                          if (canSelectSequence) {
-                            sequenceSelected = true;
-                          } else if (canSelectRumble) {
-                            rumbleSelected = true;
-                          } else if (canSelectChance) {
-                            chanceSelected = true;
-                          }
-                        }
+
                       });
                     },
                   ),
@@ -1071,15 +1037,7 @@ class _LotteryNumberSelectionScreenState
         colorText: Colors.white,
       );
       // Default to first available category
-      setState(() {
-        if (isCategoryAvailable(0)) {
-          sequenceSelected = true;
-        } else if (isCategoryAvailable(1)) {
-          rumbleSelected = true;
-        } else if (isCategoryAvailable(3)) {
-          chanceSelected = true;
-        }
-      });
+
       return;
     }
     Navigator.push(
@@ -1185,28 +1143,18 @@ class _LotteryNumberSelectionScreenState
 // Updated getter for totalPrice to include all selected categories
   double get totalPrice {
     // For lotteries with numberLottery > 5, price doesn't increase with category selection
-    // if (widget.numbersPerRow > 5) {
     if (false) {
-      return widget.price ;
+      return widget.price;
     } else {
-      // Original pricing logic for lotteries with numberLottery <= 5
+      // Count selected categories
       int selectedCategoryCount = 0;
       if (sequenceSelected && isCategoryAvailable(0)) selectedCategoryCount++;
       if (rumbleSelected && isCategoryAvailable(1)) selectedCategoryCount++;
       if (chanceSelected && isCategoryAvailable(3)) selectedCategoryCount++;
 
-      // Ensure at least one available category is selected
+      // If no category is selected, return base price (but this should trigger validation error)
       if (selectedCategoryCount == 0) {
-        if (isCategoryAvailable(0)) {
-          sequenceSelected = true;
-          selectedCategoryCount = 1;
-        } else if (isCategoryAvailable(1)) {
-          rumbleSelected = true;
-          selectedCategoryCount = 1;
-        } else if (isCategoryAvailable(3)) {
-          chanceSelected = true;
-          selectedCategoryCount = 1;
-        }
+        return widget.price * widget.rowCount;
       }
 
       return widget.price * selectedCategoryCount * widget.rowCount;
