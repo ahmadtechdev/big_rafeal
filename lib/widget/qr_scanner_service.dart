@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:printing/printing.dart';
 import '../api_service/api_service.dart';
 import '../controllers/lottery_controller.dart';
@@ -307,8 +308,37 @@ class QRScannerService {
     );
   }
 
+  // Add permission check method
+  Future<bool> _checkCameraPermission() async {
+    final status = await Permission.camera.status;
+    if (status.isGranted) {
+      return true;
+    }
+
+    if (status.isPermanentlyDenied) {
+      CustomSnackBar.error(
+          "Camera permission is permanently denied. Please enable it in app settings.",
+          title: "Permission Required"
+      );
+      await openAppSettings();
+      return false;
+    }
+
+    final result = await Permission.camera.request();
+    return result.isGranted;
+  }
+
+
   // Update the openQRScanner method
   Future<void> openQRScanner(BuildContext context) async {
+
+    final hasPermission = await _checkCameraPermission();
+    if (!hasPermission) {
+      CustomSnackBar.error("Camera permission is required to scan QR codes");
+      return;
+    }
+
+
     // Reset loading state and initialize scanner
     isLoading.value = false;
     isScannerActive.value = false;
@@ -319,7 +349,7 @@ class QRScannerService {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext modalContext) => SizedBox(
-        height: MediaQuery.of(modalContext).size.height * 0.85,
+        height: MediaQuery.of(modalContext).size.height * 0.90,
         child: Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -366,72 +396,28 @@ class QRScannerService {
               Expanded(
                 child: Stack(
                   children: [
-                    // Scanner with proper initialization
+                    // Scanner with proper initialization - REMOVE Expanded from here
                     FutureBuilder(
                       future: _startScanner(),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
+                          return const Center(child: CircularProgressIndicator());
                         }
 
                         if (snapshot.hasError || scannerController == null) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.camera_alt_outlined,
-                                  size: 64,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'Camera initialization failed',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.of(modalContext).pop();
-                                    openManualInput(context);
-                                  },
-                                  child: const Text('Enter Order ID Instead'),
-                                ),
-                              ],
-                            ),
-                          );
+                          return _buildCameraErrorUI(modalContext, context);
                         }
 
                         return Obx(() => isScannerActive.value
                             ? MobileScanner(
                           controller: scannerController!,
                           onDetect: (capture) {
-                            final List<Barcode> barcodes = capture.barcodes;
-                            if (barcodes.isNotEmpty &&
-                                barcodes.first.rawValue != null) {
-                              // Prevent multiple scans
-                              if (isLoading.value) return;
-
-                              isLoading.value = true;
-                              isScannerActive.value = false;
-
-                              // Close the scanner
-                              _stopScanner();
-                              Navigator.pop(modalContext);
-
-                              // Process the scanned QR code
-                              processQRCode(context, barcodes.first.rawValue!);
-                            }
+                            _handleScanDetection(capture, modalContext);
                           },
                         )
-                            : const Center(
-                          child: CircularProgressIndicator(),
-                        ));
+                            : const Center(child: CircularProgressIndicator()));
                       },
                     ),
-
                     // Overlay with scanning frame (only show when scanner is active)
                     Obx(() => isScannerActive.value
                         ? CustomPaint(
@@ -471,13 +457,63 @@ class QRScannerService {
     });
   }
 
-  // Add method to start scanner with proper error handling
+  // Extract scan detection logic
+  void _handleScanDetection(BarcodeCapture capture, BuildContext modalContext) {
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
+      if (isLoading.value) return;
+
+      isLoading.value = true;
+      isScannerActive.value = false;
+
+      _stopScanner();
+      Navigator.pop(modalContext);
+
+      processQRCode(modalContext, barcodes.first.rawValue!);
+    }
+  }
+
+  // Build camera error UI
+  Widget _buildCameraErrorUI(BuildContext modalContext, BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          const Text(
+            'Camera initialization failed',
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(modalContext).pop();
+              openManualInput(context);
+            },
+            child: const Text('Enter Order ID Instead'),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(modalContext).pop();
+              await Future.delayed(const Duration(milliseconds: 300));
+              openQRScanner(context);
+            },
+            child: const Text('Retry Camera'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Improve scanner start with better error handling
   Future<void> _startScanner() async {
     try {
       if (scannerController != null) {
         await scannerController!.start();
-        // Small delay to ensure camera is fully initialized
-        await Future.delayed(const Duration(milliseconds: 500));
+        // Add a small delay to ensure camera is fully initialized
+        await Future.delayed(const Duration(milliseconds: 800));
         isScannerActive.value = true;
       }
     } catch (e) {
@@ -486,7 +522,6 @@ class QRScannerService {
       rethrow;
     }
   }
-
   // Add method to properly stop scanner
   void _stopScanner() {
     try {

@@ -1,0 +1,6 @@
+-keep class com.justin.mobile_scanner.** { *; }
+-keep class com.king.zxing.** { *; }
+-keep class com.google.zxing.** { *; }
+-dontwarn com.justin.mobile_scanner.**
+-dontwarn com.king.zxing.**
+-dontwarn com.google.zxing.**

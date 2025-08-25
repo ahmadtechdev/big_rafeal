@@ -183,8 +183,8 @@ class _LotteryNumberSelectionScreenState
     setState(() {
       List<int> currentRowNumbers = selectedNumbersRows[activeRowIndex];
 
-      // Check if we need to enforce unique numbers within the same row only
-      bool enforceUniqueInRow = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+      // Only enforce unique numbers for 6-digit lotteries
+      bool enforceUniqueInRow = widget.numbersPerRow == 6;
 
       if (enforceUniqueInRow) {
         // Check if the number is already selected in the CURRENT row only
@@ -198,11 +198,12 @@ class _LotteryNumberSelectionScreenState
             snackPosition: SnackPosition.BOTTOM,
             backgroundColor: Colors.orange,
             colorText: Colors.white,
+            duration: Duration(seconds: 1)
           );
         }
       } else {
         // Original behavior for other cases - no duplicate check
-        if (currentRowNumbers.length < widget.numbersPerRow && !currentRowNumbers.contains(number)) {
+        if (currentRowNumbers.length < widget.numbersPerRow ) {
           currentRowNumbers.add(number);
         }
       }
@@ -225,8 +226,8 @@ class _LotteryNumberSelectionScreenState
       final startNumber = widget.maxNumber < 10 ? 0 : 1;
       List<int> availableNumbers = List.generate(widget.maxNumber, (index) => index + startNumber);
 
-      // Check if we need to enforce unique numbers within the same row
-      bool enforceUniqueInRow = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+      // Only enforce unique numbers for 6-digit lotteries
+      bool enforceUniqueInRow = widget.numbersPerRow == 6;
 
       if (enforceUniqueInRow) {
         // Only avoid numbers already selected in the current row
@@ -253,8 +254,8 @@ class _LotteryNumberSelectionScreenState
     setState(() {
       final startNumber = widget.maxNumber < 10 ? 0 : 1;
 
-      // Check if we need to enforce unique numbers within each row (but allow duplicates across rows)
-      bool enforceUniqueInRow = widget.numbersPerRow == 6 && widget.maxNumber <= 25;
+      // Only enforce unique numbers for 6-digit lotteries
+      bool enforceUniqueInRow = widget.numbersPerRow == 6;
 
       if (enforceUniqueInRow) {
         // For each row, pick unique numbers within that row, but allow duplicates across rows
