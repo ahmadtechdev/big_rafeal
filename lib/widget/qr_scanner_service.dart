@@ -969,13 +969,13 @@ class QRScannerService {
                       sum + (ticket['result'] as LotteryResult).prizeAmount
                       );
 
-                      if (totalPrize >= 750) {
-                        CustomSnackBar.error(
-                          "Prizes 750 or greater AED must be claimed at our office with an admin",
-                          duration: 4,
-                        );
-                        return;
-                      }
+                      // if (totalPrize >= 750) {
+                      //   CustomSnackBar.error(
+                      //     "Prizes 750 or greater AED must be claimed at our office with an admin",
+                      //     duration: 4,
+                      //   );
+                      //   return;
+                      // }
 
                       // If prize is under 750, proceed with normal claim
                       final claimResult = await _claimTickets(orderId);
@@ -1085,20 +1085,20 @@ class QRScannerService {
   }
 
   pw.Widget _buildReceiptPage(
-    LotteryResult result,
-    Lottery lottery,
-    List<int> selectedNumbers,
-    List<int> winningNumbers,
-    int seq,
-    int rum,
-    int cha,
-    String seqWin,
-    String rumWin,
-    String chaWin,
-    Uint8List? companyLogoData,
-    String currentDateTime,
-    String orderId,
-  ) {
+      LotteryResult result,
+      Lottery lottery,
+      List<int> selectedNumbers,
+      List<int> winningNumbers,
+      int seq,
+      int rum,
+      int cha,
+      String seqWin,
+      String rumWin,
+      String chaWin,
+      Uint8List? companyLogoData,
+      String currentDateTime,
+      String orderId,
+      ) {
     final bool isFullWin = result.resultType == ResultType.fullWin;
     final bool hasSequenceWin = result.isSequenceMatch;
     final bool hasChanceWin = result.isChanceMatch;
@@ -1111,46 +1111,46 @@ class QRScannerService {
     if (isFullWin) {
       resultStatus = 'JACKPOT WINNER!';
       resultDetails =
-          'You matched all ${selectedNumbers.length} numbers!\nYou won AED ${result.prizeAmount}!';
+      'You matched all ${selectedNumbers.length} numbers!\nYou won AED ${result.prizeAmount}!';
     } else if (hasSequenceWin && hasRumbleWin && hasChanceWin) {
       resultStatus = 'STRAIGHT, CHANCE & RUMBLE WIN!';
       resultDetails =
-          'Straight x$seq: $seqWin AED\n'
+      'Straight x$seq: $seqWin AED\n'
           'Rumble x$rum: $rumWin AED\n'
           'Chance x$cha: $chaWin AED\n'
           'Total: AED ${result.prizeAmount.toStringAsFixed(2)}';
     } else if (hasSequenceWin && hasRumbleWin) {
       resultStatus = 'STRAIGHT & RUMBLE WIN!';
       resultDetails =
-          'Straight x$seq: $seqWin AED\n'
+      'Straight x$seq: $seqWin AED\n'
           'Rumble x$rum: $rumWin AED\n'
           'Total: AED ${result.prizeAmount.toStringAsFixed(2)}';
     } else if (hasChanceWin && hasRumbleWin) {
       resultStatus = 'CHANCE & RUMBLE WIN!';
       resultDetails =
-          'Chance x$cha: $chaWin AED\n'
+      'Chance x$cha: $chaWin AED\n'
           'Rumble x$rum: $rumWin AED\n'
           'Total: AED ${result.prizeAmount.toStringAsFixed(2)}';
     } else if (hasSequenceWin && hasChanceWin) {
       resultStatus = 'STRAIGHT & CHANCE WIN!';
       resultDetails =
-          'Straight x$seq: $seqWin AED\n'
+      'Straight x$seq: $seqWin AED\n'
           'Chance x$cha: $chaWin AED\n'
           'Total: AED ${result.prizeAmount.toStringAsFixed(2)}';
     } else if (hasSequenceWin) {
       resultStatus = 'STRAIGHT WIN!';
       resultDetails =
-          'Straight x$seq: $seqWin AED\n'
+      'Straight x$seq: $seqWin AED\n'
           'Total: AED ${result.prizeAmount.toStringAsFixed(2)}';
     } else if (hasChanceWin) {
       resultStatus = 'CHANCE WIN!';
       resultDetails =
-          'Chance x$cha: $chaWin AED\n'
+      'Chance x$cha: $chaWin AED\n'
           'Total: AED ${result.prizeAmount.toStringAsFixed(2)}';
     } else if (hasRumbleWin) {
       resultStatus = 'RUMBLE WIN!';
       resultDetails =
-          'Rumble x$rum: $rumWin AED\n'
+      'Rumble x$rum: $rumWin AED\n'
           'Total: AED ${result.prizeAmount.toStringAsFixed(2)}';
     } else {
       resultStatus = 'BETTER LUCK NEXT TIME!';
@@ -1203,61 +1203,55 @@ class QRScannerService {
         ),
         pw.SizedBox(height: 12),
 
-        // Numbers section
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+        // Numbers section - CHANGED TO VERTICAL LAYOUT
+        pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            pw.Column(
-              children: [
-                pw.Text(
-                  'YOUR NUMBERS:',
-                  style: pw.TextStyle(
-                    fontSize: 10,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 4),
-                pw.Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children:
-                      selectedNumbers
-                          .map(
-                            (number) => _buildPdfNumberCircle(
-                              number,
-                              PdfColors.orange,
-                              winningNumbers.contains(number),
-                            ),
-                          )
-                          .toList(),
-                ),
-              ],
+            pw.Text(
+              'YOUR NUMBERS:',
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+              ),
             ),
-            pw.Column(
-              children: [
-                pw.Text(
-                  'WINNING NUMBERS:',
-                  style: pw.TextStyle(
-                    fontSize: 10,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
+            pw.SizedBox(height: 4),
+            pw.Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              alignment: pw.WrapAlignment.center,
+              children: selectedNumbers
+                  .map(
+                    (number) => _buildPdfNumberCircle(
+                  number,
+                  PdfColors.orange,
+                  winningNumbers.contains(number),
                 ),
-                pw.SizedBox(height: 4),
-                pw.Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children:
-                      winningNumbers
-                          .map(
-                            (number) => _buildPdfNumberCircle(
-                              number,
-                              PdfColors.blue,
-                              true,
-                            ),
-                          )
-                          .toList(),
+              )
+                  .toList(),
+            ),
+            pw.SizedBox(height: 12),
+
+            pw.Text(
+              'WINNING NUMBERS:',
+              style: pw.TextStyle(
+                fontSize: 10,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              alignment: pw.WrapAlignment.center,
+              children: winningNumbers
+                  .map(
+                    (number) => _buildPdfNumberCircle(
+                  number,
+                  PdfColors.blue,
+                  true,
                 ),
-              ],
+              )
+                  .toList(),
             ),
           ],
         ),
